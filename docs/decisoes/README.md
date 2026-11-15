@@ -14,3 +14,4 @@ registro novo que aponta para o antigo; o antigo não é apagado.
 | [007](007-painel-fastapi-plotly.md) | Painel em FastAPI + Plotly, não Streamlit | aceita |
 | [008](008-ldm-gooddata-em-codigo.md) | Modelo lógico do GoodData declarado em código | aceita |
 | [009](009-quarentena-por-particao.md) | Quarentena por partição e processamento só do que é novo | aceita |
+| [010](010-agente-com-memoria-e-avaliacao.md) | Agente com memória de exemplos verificados, streaming e avaliação | aceita |

@@ -13,7 +13,7 @@ agente de IA que consulta os dados e workspace GoodData como código.
 ![Gemini](https://img.shields.io/badge/agente-Gemini-8E75B2?logo=googlegemini&logoColor=white)
 ![GoodData](https://img.shields.io/badge/GoodData-LDM_+_MAQL-1A1A1A)
 ![Vercel](https://img.shields.io/badge/deploy-Vercel-000000?logo=vercel&logoColor=white)
-![testes](https://img.shields.io/badge/testes-112_dbt_+_3_unit_+_42_pytest-0ca30c)
+![testes](https://img.shields.io/badge/testes-112_dbt_+_3_unit_+_69_pytest-0ca30c)
 
 ![Panorama do painel](docs/img/panorama.png)
 
@@ -152,21 +152,31 @@ com o motivo *"volume 2079 fora da faixa (régua 4159); campos obrigatórios vaz
 
 ## Agente
 
-![Agente respondendo](docs/img/agente.png)
+![Agente respondendo com gráfico](docs/img/agente.png)
 
-Pergunta em português, resposta com tabela, fonte e o SQL que rodou.
+Pergunta em português; resposta em streaming, com cada passo aparecendo ao vivo,
+gráfico quando faz sentido, fonte, o SQL que rodou e três próximas perguntas.
 
-- **Ferramentas:** listar e descrever tabelas (a partir do manifest do dbt), consultar SQL, definição de métrica, status de qualidade, exemplo canônico de modelo dbt.
+**Acerto medido: 8 de 8 perguntas com o número certo, 1,5 passo em média**
+(`python -m agente.avaliacao`, gabarito em SQL). Antes da memória, a mesma
+pergunta sobre UFs levava 4 passos.
+
+- **Memória de exemplos verificados.** 17 pares pergunta → SQL conferidos contra o painel ([`agente/exemplos_verificados.yaml`](agente/exemplos_verificados.yaml)). Os 3 mais parecidos com a pergunta entram no contexto, com a armadilha anotada (média de razões, STRUCT, coluna que só existe na dimensão). O CI roda todos os SQL.
+- **Catálogo no contexto.** Tabelas e colunas de `publicado`, geradas do manifest do dbt.
+- **Aprende com o uso, com revisão.** 👍/👎 no chat; `python -m agente.promover_feedback` transforma os aprovados em exemplos, via PR.
+- **Sabe o que você está vendo.** O filtro do painel (UF, região) vai como contexto.
+- **Gráficos.** A ferramenta `criar_grafico` monta a figura no tema do painel e manda direto para a conversa.
 - **Segurança em três camadas:** prompt; validação da AST com sqlglot (só SELECT, só `publicado`, sem table functions, LIMIT obrigatório); conexão DuckDB em memória sem acesso a arquivo nem rede.
-- **Resiliência:** timeout de 45 s, e se o modelo principal estiver sobrecarregado cai para o próximo da lista.
+- **Resiliência:** timeout de 45 s e fallback entre três modelos Gemini quando um está sobrecarregado ou sem cota.
 
 ```bash
 python -m agente "Museus públicos têm mais plano museológico que privados?" --rastro
+python -m agente.avaliacao
 ```
 
-A pasta [`ai_templates/`](ai_templates) tem os exemplos canônicos de staging,
-intermediate, mart e YAML, com as convenções do projeto. O agente usa para
-propor modelos novos; serve igual para qualquer ferramenta de geração.
+Detalhes em [ADR 006](docs/decisoes/006-agente-sql-guardado.md) e [ADR 010](docs/decisoes/010-agente-com-memoria-e-avaliacao.md).
+A pasta [`ai_templates/`](ai_templates) tem os exemplos canônicos de modelo dbt
+que o agente usa para propor modelos novos.
 
 ## Painel
 
@@ -177,6 +187,7 @@ propor modelos novos; serve igual para qualquer ferramenta de geração.
 
 O que muda no uso, além dos gráficos:
 
+- **Movimento com propósito.** Uma entrada orquestrada por página (os blocos sobem em sequência, os números contam até o valor, as barras crescem e o eixo da linha do tempo acende), transição suave entre páginas e filtros (View Transitions) e luz que segue o cursor nos cartões. Tudo desliga com `prefers-reduced-motion`.
 - **IA no contexto.** Todo gráfico tem "Perguntar sobre isto": o assistente abre numa gaveta lateral já com o gráfico e o recorte como pergunta.
 - **Paleta de comandos** (`Ctrl/⌘ + K`): digite uma UF, região, página ou uma pergunta em português.
 - **Mapa clicável:** clicar numa UF filtra o painel inteiro. `←` `→` percorrem as regiões.
@@ -236,6 +247,7 @@ tests/             pytest + amostra do lake para o CI
 | [007](docs/decisoes/007-painel-fastapi-plotly.md) | FastAPI + Plotly em vez de Streamlit (Vercel) |
 | [008](docs/decisoes/008-ldm-gooddata-em-codigo.md) | modelo lógico do GoodData em código |
 | [009](docs/decisoes/009-quarentena-por-particao.md) | quarentena por partição e processamento só do que é novo |
+| [010](docs/decisoes/010-agente-com-memoria-e-avaliacao.md) | agente com memória de exemplos verificados, streaming e avaliação |
 
 ## Limitações
 

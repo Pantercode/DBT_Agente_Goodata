@@ -17,7 +17,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
@@ -385,6 +385,14 @@ def agente_pagina(request: Request):
 class Pergunta(BaseModel):
     pergunta: str = Field(min_length=3, max_length=1000)
     historico: list[dict] = Field(default_factory=list, max_length=20)
+    # recorte que o usuário está vendo ("UF BA", "região Nordeste"); vira contexto do agente
+    recorte: str | None = Field(default=None, max_length=60)
+
+
+def _contexto(recorte: str | None) -> str | None:
+    if not recorte or recorte == "Brasil":
+        return None
+    return f"o usuário está com o painel filtrado em {recorte}."
 
 
 @app.post("/api/agente")
@@ -392,9 +400,45 @@ def api_agente(corpo: Pergunta):
     from agente.nucleo import AgenteIndisponivel, perguntar  # import tardio: o painel sobe sem o SDK configurado
 
     try:
-        return perguntar(corpo.pergunta, corpo.historico).para_dict()
+        return perguntar(corpo.pergunta, corpo.historico, _contexto(corpo.recorte)).para_dict()
     except AgenteIndisponivel as exc:
         return JSONResponse({"erro": str(exc)}, status_code=503)
+
+
+@app.post("/api/agente/stream")
+def api_agente_stream(corpo: Pergunta):
+    """Eventos do agente em NDJSON (uma linha JSON por evento), ao vivo."""
+    import json
+
+    from agente.nucleo import eventos
+
+    def gerar():
+        try:
+            for ev in eventos(corpo.pergunta, corpo.historico, _contexto(corpo.recorte)):
+                yield json.dumps(ev, ensure_ascii=False, default=str) + "\n"
+        except Exception as exc:  # o stream já começou: o erro vira evento, não 500
+            log.exception("agente falhou")
+            yield json.dumps({"tipo": "erro", "mensagem": f"Falha inesperada: {exc}"}, ensure_ascii=False) + "\n"
+
+    return StreamingResponse(
+        gerar(), media_type="application/x-ndjson", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+    )
+
+
+class Feedback(BaseModel):
+    pergunta: str = Field(max_length=1000)
+    resposta: str = Field(max_length=8000)
+    sqls: list[str] = Field(default_factory=list, max_length=10)
+    util: bool
+    comentario: str = Field(default="", max_length=500)
+
+
+@app.post("/api/agente/feedback")
+def api_feedback(corpo: Feedback):
+    from agente.memoria import registrar_feedback
+
+    gravado = registrar_feedback(corpo.pergunta, corpo.resposta, corpo.sqls, corpo.util, corpo.comentario)
+    return {"ok": True, "gravado": gravado}
 
 
 @app.get("/api/saude")

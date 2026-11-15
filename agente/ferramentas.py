@@ -144,9 +144,133 @@ def obter_exemplo_canonico(camada: str) -> dict:
     }
 
 
+_contador_graficos = 0
+TIPOS_GRAFICO = ("barras", "barras_horizontais", "linha", "dispersao")
+
+
+def criar_grafico(sql: str, tipo: str, x: str, y: str, titulo: str, serie: str | None = None) -> dict:
+    """Roda o SQL (mesma validação de consultar_sql) e monta uma figura no tema do painel.
+
+    A figura vai direto para o usuário (chave `_figura`, retirada pelo núcleo
+    antes de devolver ao modelo). O modelo recebe só a confirmação e um resumo
+    dos dados, para comentar o gráfico sem gastar contexto com o JSON."""
+    import json
+
+    import plotly.graph_objects as go
+
+    from painel import tema
+
+    global _contador_graficos
+    if tipo not in TIPOS_GRAFICO:
+        return {"erro": f"tipo deve ser um de {', '.join(TIPOS_GRAFICO)}"}
+    consulta = consultar_sql(sql, f"gráfico: {titulo}")
+    if "erro" in consulta:
+        return consulta
+    try:
+        linhas = dados.consultar(consulta["sql_executado"])
+    except Exception as exc:
+        return {"erro": str(exc).splitlines()[0][:300]}
+    if not linhas:
+        return {"erro": "A consulta não devolveu linhas; nada para desenhar."}
+    faltando = [c for c in (x, y, serie) if c and c not in linhas[0]]
+    if faltando:
+        return {"erro": f"Colunas {faltando} não estão no resultado. Colunas: {list(linhas[0])}"}
+    if len(linhas) > 60 and tipo != "dispersao":
+        linhas = linhas[:60]
+
+    def valores(col):
+        return [_serializavel(r[col]) for r in linhas]
+
+    grupos = {None: linhas} if not serie else {}
+    if serie:
+        for r in linhas:
+            grupos.setdefault(r[serie], []).append(r)
+    cores = [tema.ACENTO, *tema.CATEGORICA.values()]
+    if serie and len(grupos) > len(cores):
+        return {
+            "erro": f"`{serie}` tem {len(grupos)} categorias; o máximo legível é {len(cores)}. Agrupe o resto em 'Outros'."
+        }
+
+    fig = go.Figure()
+    for i, (nome, rs) in enumerate(grupos.items()):
+        xs, ys = [_serializavel(r[x]) for r in rs], [_serializavel(r[y]) for r in rs]
+        cor = cores[i]
+        if tipo in ("barras", "barras_horizontais"):
+            h = tipo == "barras_horizontais"
+            fig.add_trace(
+                go.Bar(
+                    x=ys if h else xs,
+                    y=xs if h else ys,
+                    orientation="h" if h else "v",
+                    name=str(nome) if nome is not None else y,
+                    marker=dict(color=cor, cornerradius=4),
+                )
+            )
+        elif tipo == "linha":
+            fig.add_trace(
+                go.Scatter(
+                    x=xs,
+                    y=ys,
+                    mode="lines+markers",
+                    name=str(nome or y),
+                    line=dict(color=cor, width=2),
+                    marker=dict(size=7),
+                )
+            )
+        else:
+            fig.add_trace(
+                go.Scatter(
+                    x=xs,
+                    y=ys,
+                    mode="markers",
+                    name=str(nome or y),
+                    marker=dict(color=cor, size=9, line=dict(color=tema.SUPERFICIE, width=2)),
+                )
+            )
+    if tipo == "barras_horizontais":
+        fig.update_yaxes(autorange="reversed", showgrid=False)
+    fig.update_layout(
+        height=300,
+        showlegend=bool(serie),
+        margin=dict(l=8, r=8, t=8, b=8),
+        xaxis_title=None if tipo != "dispersao" else x,
+        yaxis_title=None if tipo != "dispersao" else y,
+    )
+
+    _contador_graficos += 1
+    return {
+        "grafico_id": _contador_graficos,
+        "mensagem": "Gráfico exibido ao usuário. Comente em 1-2 frases o que ele mostra; não repita todos os números.",
+        "linhas_desenhadas": len(linhas),
+        "amostra": _serializavel(linhas[:5]),
+        "_figura": json.loads(fig.to_json()),
+    }
+
+
 # ------------------------------------------------------------- declarações
 
 DECLARACOES: list[dict] = [
+    {
+        "name": "criar_grafico",
+        "description": (
+            "Mostra um gráfico ao usuário a partir de um SELECT em `publicado`. Use quando a resposta for uma "
+            "comparação entre mais de 4 itens, uma evolução no tempo ou quando o usuário pedir um gráfico. "
+            "barras_horizontais para ranking de UFs/municípios; linha para série temporal; dispersao para relação "
+            "entre duas medidas. Máximo 4 categorias em `serie`."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "sql": {"type": "string", "description": "SELECT que devolve as colunas x, y (e serie, se houver)."},
+                "tipo": {"type": "string", "enum": list(TIPOS_GRAFICO)},
+                "x": {"type": "string", "description": "Coluna do eixo x (categoria ou data)."},
+                "y": {"type": "string", "description": "Coluna numérica."},
+                "titulo": {"type": "string", "description": "Título curto, em português."},
+                "serie": {"type": "string", "description": "Opcional: coluna que separa séries (até 4 valores)."},
+            },
+            "required": ["sql", "tipo", "x", "y", "titulo"],
+        },
+    },
     {
         "name": "listar_tabelas",
         "description": "Lista as tabelas publicadas (schema `publicado`) com uma descrição curta de cada uma.",
@@ -212,6 +336,7 @@ FUNCOES = {
     "definicao_metrica": definicao_metrica,
     "status_qualidade": status_qualidade,
     "obter_exemplo_canonico": obter_exemplo_canonico,
+    "criar_grafico": criar_grafico,
 }
 
 

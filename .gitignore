@@ -15,6 +15,8 @@ logs/
 # data/serving é versionado de propósito: é o que a Vercel publica.
 data/lake/
 data/warehouse/
+# feedback do chat e resultados de avaliação são locais (o que vale vira exemplo via PR)
+data/agente/
 
 # ferramentas
 .ruff_cache/

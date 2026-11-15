@@ -1,0 +1,140 @@
+/* Efeitos e chat ao vivo.
+   Uma entrada orquestrada por página, transição entre páginas e luz que
+   responde ao cursor. Nada fica se movendo sozinho depois que a página assenta,
+   e tudo some com prefers-reduced-motion. */
+
+/* ---------------------------------------- transição entre páginas e filtros */
+@view-transition { navigation: auto; }
+.topo { view-transition-name: topo; }
+::view-transition-old(root) { animation: 200ms ease-in both sair-pagina; }
+::view-transition-new(root) { animation: 380ms cubic-bezier(.2, .8, .2, 1) both entrar-pagina; }
+@keyframes sair-pagina { to { opacity: 0; filter: blur(6px); transform: scale(.996); } }
+@keyframes entrar-pagina { from { opacity: 0; filter: blur(8px); transform: translateY(10px); } }
+
+/* ------------------------------------------------------ entrada orquestrada */
+.anima-entrada { opacity: 0; transform: translateY(16px); }
+.entrou .anima-entrada {
+  opacity: 1; transform: none;
+  transition: opacity .6s cubic-bezier(.2, .8, .2, 1), transform .7s cubic-bezier(.2, .8, .2, 1), box-shadow .3s;
+  transition-delay: calc(var(--i, 0) * 55ms);
+}
+/* depois da entrada, o transform do destaque é do JS (inclinação): sem atraso */
+.entrou .destaque.ja-entrou { transition: transform .25s cubic-bezier(.2, .8, .2, 1), box-shadow .3s; transition-delay: 0s; }
+
+/* ----------------------------------------- borda que acende perto do cursor */
+.cartao, .painel-bloco, .destaque { position: relative; }
+.cartao::after, .painel-bloco::after, .destaque > .borda-luz {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: radial-gradient(420px circle at var(--brilho-x, -999px) var(--brilho-y, -999px), rgba(255, 196, 107, .55), transparent 42%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+/* ---------------------------------------------------- destaques: profundidade */
+.destaque { transform-style: preserve-3d; will-change: transform; }
+.destaque:hover { box-shadow: var(--brilho-borda), 0 28px 60px rgba(0, 0, 0, .5), 0 0 0 1px rgba(255, 196, 107, .14); }
+
+/* cartão âmbar: uma faixa de luz atravessa na entrada e no hover */
+.destaque-ambar .faixa-luz {
+  position: absolute; top: -20%; bottom: -20%; left: -60%; width: 45%; z-index: 0; pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgba(255, 240, 210, .5), transparent);
+  transform: skewX(-18deg); opacity: 0;
+}
+.entrou .destaque-ambar .faixa-luz { animation: faixa-luz 1.6s .55s cubic-bezier(.4, 0, .2, 1) 1; }
+.destaque-ambar:hover .faixa-luz { animation: faixa-luz 1.2s cubic-bezier(.4, 0, .2, 1) 1; }
+@keyframes faixa-luz { 0% { left: -60%; opacity: 0; } 15% { opacity: 1; } 100% { left: 130%; opacity: 0; } }
+.destaque-ambar > :not(.faixa-luz) { position: relative; z-index: 1; }
+
+/* ------------------------------------------------- grão sutil sobre o app */
+.app { position: relative; }
+.app::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: .06; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ------------------------------- linha do tempo: o eixo acende na entrada */
+.tempo::before {
+  content: ""; position: absolute; left: 2%; top: 1.55rem; height: 1px; width: 0;
+  background: linear-gradient(90deg, transparent, var(--ambar) 30%, var(--ambar-claro));
+  box-shadow: 0 0 12px rgba(233, 162, 59, .6);
+}
+.entrou .tempo::before { animation: varrer-eixo 1.4s .35s cubic-bezier(.4, 0, .2, 1) forwards; }
+@keyframes varrer-eixo { to { width: 96%; } }
+
+/* =============================================================== chat ao vivo */
+
+.passos-vivos { list-style: none; margin: 0 0 .6rem; padding: 0; display: grid; gap: .35rem; }
+.passos-vivos:empty { display: none; }
+.passo { display: grid; grid-template-columns: 18px 1fr auto; align-items: center; gap: .6rem; font-size: var(--t-0); color: var(--tinta-2); }
+.passo-icone { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(233, 162, 59, .25); }
+.passo-rodando .passo-icone { border-top-color: var(--ambar); animation: girar .8s linear infinite; }
+.passo-rodando .passo-texto {
+  background: linear-gradient(90deg, var(--tinta-2) 40%, var(--tinta) 50%, var(--tinta-2) 60%);
+  background-size: 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: brilho-texto 1.6s linear infinite;
+}
+.passo-ok .passo-icone {
+  border: 0;
+  background: var(--bom) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m6 12 4 4 8-8' fill='none' stroke='%230B0A09' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E") center / 10px no-repeat;
+}
+.passo-erro .passo-icone { border: 0; background: var(--atencao); }
+.passo-tempo { font-size: .6875rem; color: var(--tinta-muda); font-variant-numeric: tabular-nums; }
+.passo-sql { grid-column: 2 / -1; }
+.passo-sql summary { cursor: pointer; font-size: .6875rem; color: var(--tinta-muda); width: max-content; }
+.passo-sql pre { margin: .3rem 0 0; padding: .6rem .75rem; background: rgba(0, 0, 0, .45); border: 1px solid var(--linha); border-radius: 10px; white-space: pre-wrap; }
+.passo-sql code { background: none; padding: 0; color: var(--ambar-claro); font-size: .75rem; }
+@keyframes girar { to { transform: rotate(360deg); } }
+@keyframes brilho-texto { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+
+/* pronto: os passos recolhem numa linha clicável */
+.passos-concluidos .passo { display: none; }
+.passos-concluidos.passos-abertos .passo { display: grid; }
+.passos-resumo { cursor: pointer; font-size: .75rem; color: var(--tinta-muda); padding: .1rem 0 .3rem; }
+.passos-resumo::before { content: "▸ "; }
+.passos-abertos .passos-resumo::before { content: "▾ "; }
+.passos-resumo:hover { color: var(--ambar-claro); }
+
+.pensando { color: var(--tinta-muda); font-size: var(--t-0); }
+.reticencias::after { content: ""; animation: reticencias 1.2s steps(4) infinite; }
+.cursor { display: inline-block; width: .55ch; height: 1.1em; margin-left: 2px; vertical-align: text-bottom; background: var(--ambar); animation: piscar 1s steps(2) infinite; }
+@keyframes piscar { 50% { opacity: 0; } }
+.msg-ao-vivo { border-color: rgba(233, 162, 59, .3); box-shadow: 0 0 0 1px rgba(233, 162, 59, .08), 0 0 40px rgba(233, 162, 59, .06); }
+
+.graficos-msg:empty { display: none; }
+.grafico-msg { margin: .2rem 0 .8rem; padding: .7rem .8rem .4rem; border-radius: 14px; border: 1px solid var(--linha); background: rgba(0, 0, 0, .25); }
+.grafico-msg figcaption { font-size: var(--t-0); color: var(--tinta); margin-bottom: .2rem; }
+.plot-msg { height: 300px; }
+
+.rodape-msg { margin-top: .7rem; padding-top: .6rem; border-top: 1px solid var(--linha); display: grid; gap: .6rem; }
+.acoes-msg { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+.acao-msg { font: 500 .75rem var(--fonte); color: var(--tinta-2); background: rgba(255, 255, 255, .04); border: 1px solid var(--linha-forte); border-radius: 999px; padding: .3rem .7rem; cursor: pointer; }
+.acao-msg:hover:not(:disabled) { color: var(--tinta); border-color: rgba(255, 255, 255, .25); }
+.acao-msg:disabled { opacity: .45; cursor: default; }
+.acao-marcada { opacity: 1 !important; border-color: var(--ambar) !important; background: rgba(233, 162, 59, .12) !important; }
+.acoes-msg .meta { margin: 0 0 0 auto; }
+.sugestoes-msg { display: flex; flex-wrap: wrap; gap: .4rem; }
+.sugestao {
+  font: 400 .8125rem var(--fonte); color: var(--ambar-claro); text-align: left;
+  background: rgba(233, 162, 59, .06); border: 1px solid rgba(233, 162, 59, .22); border-radius: 12px; padding: .45rem .75rem; cursor: pointer;
+}
+.sugestao:hover { background: rgba(233, 162, 59, .14); }
+.sugestao::before { content: "↳ "; color: var(--tinta-muda); }
+
+/* estado vazio da página do assistente: temas para começar */
+.comecar { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: .7rem; margin-bottom: .4rem; }
+.tema {
+  display: grid; gap: .35rem; padding: .9rem 1rem; border-radius: 16px; border: 1px solid var(--linha);
+  background: linear-gradient(180deg, #211E1B, #171513); text-align: left; cursor: pointer; color: var(--tinta-2);
+  font: 400 var(--t-0) var(--fonte);
+}
+.tema strong { color: var(--tinta); font-weight: 500; font-size: var(--t-1); }
+.tema:hover { border-color: rgba(233, 162, 59, .4); color: var(--tinta); }
+/* os temas somem quando a conversa começa (agente.js); :empty não serve porque o
+   template deixa espaço em branco dentro da lista */
+
+@media (prefers-reduced-motion: reduce) {
+  .anima-entrada { opacity: 1; transform: none; }
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+  .tempo::before { width: 96%; }
+}

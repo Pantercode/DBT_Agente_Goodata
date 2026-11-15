@@ -137,6 +137,74 @@
     requestAnimationFrame(passo);
   });
 
+
+  /* ------------------------------------------- barras que crescem até o valor */
+  // Desenha a figura com as barras zeradas e anima até os valores reais, uma vez.
+  window.animarBarras = (el, fig) => {
+    if (semMovimento || !fig?.data?.some(t => t.type === 'bar') || !el._fullLayout) return;
+    // A figura já foi desenhada com os valores reais: guarda a escala final dos eixos
+    // e anima a partir do zero dentro dela (sem isso o eixo fica na escala do zero).
+    const fixo = eixo => {
+      const a = el._fullLayout[eixo];
+      return a && a.type !== 'category' ? {...(el.layout[eixo] || {}), range: a.range.slice(), autorange: false} : el.layout[eixo];
+    };
+    const layout = {...el.layout, xaxis: fixo('xaxis'), yaxis: fixo('yaxis')};
+    const zerado = fig.data.map(t => {
+      if (t.type !== 'bar') return t;
+      const h = t.orientation === 'h';
+      const vals = (h ? t.x : t.y) || [];
+      return {...t, [h ? 'x' : 'y']: vals.map(() => 0)};
+    });
+    Plotly.react(el, zerado, layout).then(() =>
+      Plotly.animate(el, {data: fig.data}, {transition: {duration: 750, easing: 'cubic-out'}, frame: {duration: 750, redraw: false}}));
+  };
+  document.addEventListener('plotly-pronto', ev => {
+    const el = ev.detail;
+    if (el.dataset.fig) window.animarBarras(el, JSON.parse(el.dataset.fig));
+  });
+
+  /* --------------------------------------------- inclinação 3D nos destaques */
+  document.querySelectorAll('.destaque').forEach(card => {
+    if (semMovimento) return;
+    card.addEventListener('pointermove', ev => {
+      const r = card.getBoundingClientRect();
+      const px = (ev.clientX - r.left) / r.width - 0.5;
+      const py = (ev.clientY - r.top) / r.height - 0.5;
+      card.style.transform = `perspective(900px) rotateX(${(-py * 5).toFixed(2)}deg) rotateY(${(px * 6).toFixed(2)}deg) translateY(-2px)`;
+    });
+    card.addEventListener('pointerleave', () => { card.style.transform = ''; });
+  });
+
+  /* ------------------------------------ borda que acende perto do cursor */
+  let quadro = 0;
+  document.addEventListener('pointermove', ev => {
+    if (semMovimento || quadro) return;
+    quadro = requestAnimationFrame(() => {
+      quadro = 0;
+      document.querySelectorAll('.cartao, .painel-bloco, .destaque').forEach(el => {
+        const r = el.getBoundingClientRect();
+        el.style.setProperty('--brilho-x', `${ev.clientX - r.left}px`);
+        el.style.setProperty('--brilho-y', `${ev.clientY - r.top}px`);
+      });
+    });
+  }, {passive: true});
+
+  /* -------------------------------------------- entrada orquestrada da página */
+  if (!semMovimento) {
+    document.querySelectorAll('main > *, .destaques > *, .grade > *, .evento').forEach((el, i) => {
+      el.classList.add('anima-entrada');
+      el.style.setProperty('--i', Math.min(i, 12));
+    });
+    requestAnimationFrame(() => requestAnimationFrame(() => document.body.classList.add('entrou')));
+    // terminada a entrada, a inclinação do destaque responde sem atraso
+    setTimeout(() => document.querySelectorAll('.destaque').forEach(d => d.classList.add('ja-entrou')), 1400);
+  }
+  document.querySelectorAll('.destaque-ambar').forEach(d => {
+    const faixa = document.createElement('span');
+    faixa.className = 'faixa-luz';
+    d.prepend(faixa);
+  });
+
   document.body.dataset.js = 'ok';
   void recorte;
 })();

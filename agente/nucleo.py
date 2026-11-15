@@ -1,18 +1,34 @@
-"""Loop do agente: Gemini com function calling manual.
+"""Loop do agente: Gemini com function calling manual e resposta em streaming.
 
-Por que manual e não o `automatic_function_calling` do SDK:
-  - cada chamada de ferramenta entra no `rastro`, que o painel mostra
-    ("como cheguei nesse número": ferramenta, argumentos, SQL executado);
-  - teto de iterações e de chamadas por turno, controlados aqui;
-  - erro de ferramenta volta como resultado para o modelo se corrigir, em vez
-    de levantar exceção dentro do SDK.
+`eventos()` é um gerador. Cada coisa que acontece vira um evento que o painel
+recebe ao vivo (NDJSON):
+
+    {"tipo": "inicio",   "modelo": ...}
+    {"tipo": "passo",    "ferramenta": ..., "argumentos": ..., "estado": "rodando"}
+    {"tipo": "passo",    ..., "estado": "ok" | "erro", "sql": ..., "duracao_ms": ...}
+    {"tipo": "grafico",  "id": ..., "titulo": ..., "figura": {plotly json}}
+    {"tipo": "texto",    "delta": "..."}          (pedaços da resposta, na ordem)
+    {"tipo": "fim",      "texto": ..., "sugestoes": [...], "modelo": ..., "tokens": ...}
+    {"tipo": "erro",     "mensagem": ...}
+
+`perguntar()` consome o gerador e devolve a Resposta inteira (CLI, testes,
+avaliação).
+
+Por que loop manual e não o `automatic_function_calling` do SDK:
+  - cada ferramenta vira evento e entra no rastro ("como cheguei nesse número");
+  - teto de iterações controlado aqui;
+  - erro de ferramenta volta para o modelo se corrigir, sem quebrar a conversa;
+  - artefatos (figuras) saem da ferramenta direto para o usuário, sem passar
+    pelo contexto do modelo.
 """
 
 from __future__ import annotations
 
 import logging
 import os
+import re
 import time
+from collections.abc import Iterator
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -20,18 +36,25 @@ from google import genai
 from google.genai import errors as genai_errors
 from google.genai import types
 
-from agente import ferramentas
+from agente import ferramentas, memoria
 
 log = logging.getLogger(__name__)
 
 PROMPT_SISTEMA = (Path(__file__).parent / "prompts" / "sistema.md").read_text(encoding="utf-8")
 MODELO_PADRAO = "gemini-3.8-flash"
-# Se o modelo principal estiver sobrecarregado (503, comum no free tier), cai
-# para o próximo. A troca fica registrada em Resposta.modelo.
+# Se o modelo principal estiver sobrecarregado (503) ou sem cota (429, comum no
+# free tier), cai para o próximo. A troca fica registrada no evento `fim`.
 MODELOS_RESERVA = ("gemini-3.5-flash", "gemini-3.1-flash-lite")
 MAX_ITERACOES = 8
 # Sem isso o SDK tenta de novo por vários minutos e a função da Vercel morre antes.
 TIMEOUT_MS = 45_000
+
+# O prompt pede que a resposta termine com um bloco de sugestões; ele é
+# separado do texto e vira botões no chat.
+_SUGESTOES = re.compile(
+    r"(?:\n[ \t]*-{3,}[ \t]*)?\n[ \t]*\**Próximas perguntas:?\**[ \t]*\n(?P<itens>(?:[ \t]*[-*][ \t]+.+\n?)+)\s*$",
+    re.IGNORECASE,
+)
 
 
 @dataclass
@@ -48,6 +71,8 @@ class Passo:
 class Resposta:
     texto: str
     passos: list[Passo] = field(default_factory=list)
+    graficos: list[dict] = field(default_factory=list)
+    sugestoes: list[str] = field(default_factory=list)
     modelo: str = ""
     iteracoes: int = 0
     tokens_entrada: int = 0
@@ -72,13 +97,19 @@ def _cliente() -> genai.Client:
     )
 
 
-def _configuracao() -> types.GenerateContentConfig:
+def _configuracao(contexto: str | None, pergunta: str = "") -> types.GenerateContentConfig:
     declaracoes = [
         types.FunctionDeclaration(name=d["name"], description=d["description"], parameters_json_schema=d["parameters"])
         for d in ferramentas.DECLARACOES
     ]
+    # Catálogo + exemplos verificados parecidos com a pergunta (agente/memoria.py).
+    sistema = PROMPT_SISTEMA + "\n\n" + memoria.bloco_para_prompt(pergunta)
+    if contexto:
+        # Contexto da tela (recorte do filtro). Vai no fim do prompt de sistema,
+        # não na pergunta, para o modelo tratar como situação e não como pedido.
+        sistema += f"\n\nContexto da tela: {contexto}"
     return types.GenerateContentConfig(
-        system_instruction=PROMPT_SISTEMA,
+        system_instruction=sistema,
         tools=[types.Tool(function_declarations=declaracoes)],
         automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
         temperature=0.2,
@@ -96,27 +127,30 @@ def _historico_para_contents(historico: list[dict]) -> list[types.Content]:
     return contents
 
 
-def _gerar(cliente: genai.Client, modelos: list[str], contents, config) -> tuple[types.GenerateContentResponse, str]:
-    """Tenta cada modelo da lista em ordem.
+def _abrir_stream(cliente: genai.Client, modelos: list[str], contents, config):
+    """Abre o stream no primeiro modelo que responder.
 
-    503/504/timeout e 429 passam para o próximo: no free tier a cota é por
-    modelo, então estourar a do principal não impede a reserva de responder.
-    404 (modelo aposentado para a chave) também. Outros 4xx (chave inválida,
-    requisição malformada) não melhoram trocando de modelo."""
+    O erro de cota/sobrecarga só aparece ao ler o primeiro pedaço, então o
+    primeiro pedaço é lido aqui, dentro do try, e devolvido junto.
+    503/504/timeout e 429 passam para o próximo modelo (no free tier a cota é
+    por modelo). 404 também (modelo aposentado para a chave). Outros 4xx não
+    melhoram trocando de modelo."""
     ultimo_erro: Exception | None = None
     so_cota = True
     for modelo in modelos:
         try:
-            return cliente.models.generate_content(model=modelo, contents=contents, config=config), modelo
+            stream = cliente.models.generate_content_stream(model=modelo, contents=contents, config=config)
+            primeiro = next(iter(stream), None)
+            return modelo, primeiro, stream
         except genai_errors.ClientError as exc:
             if exc.code not in (404, 429):
                 raise AgenteIndisponivel(f"A API Gemini recusou a requisição ({exc.code}).") from exc
             so_cota = so_cota and exc.code == 429
             log.warning("modelo %s recusou (%s), tentando o próximo", modelo, exc.code)
             ultimo_erro = exc
-        except (genai_errors.ServerError, TimeoutError, OSError) as exc:
+        except Exception as exc:  # 5xx, timeout do transporte HTTP (httpx levanta tipos próprios), rede
             so_cota = False
-            log.warning("modelo %s indisponível (%s), tentando o próximo", modelo, exc)
+            log.warning("modelo %s indisponível (%s: %s), tentando o próximo", modelo, type(exc).__name__, exc)
             ultimo_erro = exc
     if so_cota:
         raise AgenteIndisponivel(
@@ -127,60 +161,163 @@ def _gerar(cliente: genai.Client, modelos: list[str], contents, config) -> tuple
     ) from ultimo_erro
 
 
-def perguntar(pergunta: str, historico: list[dict] | None = None, modelo: str | None = None) -> Resposta:
+def separar_sugestoes(texto: str) -> tuple[str, list[str]]:
+    m = _SUGESTOES.search(texto)
+    if not m:
+        return texto.strip(), []
+    itens = [re.sub(r"^\s*[-*]\s*", "", linha).strip() for linha in m.group("itens").strip().splitlines()]
+    return texto[: m.start()].rstrip(), [i for i in itens if i][:3]
+
+
+def eventos(
+    pergunta: str, historico: list[dict] | None = None, contexto: str | None = None, modelo: str | None = None
+) -> Iterator[dict]:
     principal = modelo or os.environ.get("GEMINI_MODEL", MODELO_PADRAO)
     modelos = list(dict.fromkeys([principal, *MODELOS_RESERVA]))
-    cliente = _cliente()
-    config = _configuracao()
+    try:
+        cliente = _cliente()
+    except AgenteIndisponivel as exc:
+        yield {"tipo": "erro", "mensagem": str(exc)}
+        return
+    config = _configuracao(contexto, pergunta)
     contents = _historico_para_contents(historico or [])
     contents.append(types.Content(role="user", parts=[types.Part.from_text(text=pergunta)]))
-    resposta = Resposta(texto="", modelo=principal)
+
+    tokens_entrada = tokens_saida = 0
+    usado = principal
+    texto_total = ""
 
     for iteracao in range(1, MAX_ITERACOES + 1):
-        resposta.iteracoes = iteracao
-        r, usado = _gerar(cliente, modelos, contents, config)
-        # Uma vez que caiu para a reserva, fica nela até o fim do turno: trocar de
-        # modelo no meio do loop de ferramentas confunde o raciocínio.
+        try:
+            usado, primeiro, stream = _abrir_stream(cliente, modelos, contents, config)
+        except AgenteIndisponivel as exc:
+            yield {"tipo": "erro", "mensagem": str(exc)}
+            return
+        if iteracao == 1:
+            yield {"tipo": "inicio", "modelo": usado}
+        # Uma vez na reserva, fica nela até o fim: trocar de modelo no meio do
+        # loop de ferramentas confunde o raciocínio.
         modelos = modelos[modelos.index(usado) :]
-        resposta.modelo = usado
 
-        if r.usage_metadata:
-            resposta.tokens_entrada += r.usage_metadata.prompt_token_count or 0
-            resposta.tokens_saida += r.usage_metadata.candidates_token_count or 0
+        partes: list[types.Part] = []
+        chamadas: list[types.FunctionCall] = []
+        texto_turno = ""
+        entrada = saida = 0
 
-        if not r.candidates or not r.candidates[0].content:
-            motivo = r.candidates[0].finish_reason if r.candidates else "sem candidato"
-            resposta.texto = f"O modelo não devolveu resposta ({motivo})."
-            return resposta
+        def pedacos(primeiro=primeiro, stream=stream):
+            if primeiro is not None:
+                yield primeiro
+            yield from stream
 
-        contents.append(r.candidates[0].content)
-        chamadas = r.function_calls or []
+        try:
+            for pedaco in pedacos():
+                if pedaco.usage_metadata:
+                    # o último pedaço traz o total do turno
+                    entrada = pedaco.usage_metadata.prompt_token_count or 0
+                    saida = pedaco.usage_metadata.candidates_token_count or 0
+                if not pedaco.candidates or not pedaco.candidates[0].content:
+                    continue
+                for parte in pedaco.candidates[0].content.parts or []:
+                    # A parte vai inteira para o histórico: no Gemini 3 ela carrega
+                    # a thought_signature que a próxima chamada precisa receber de volta.
+                    partes.append(parte)
+                    if parte.function_call:
+                        chamadas.append(parte.function_call)
+                    elif parte.text and not parte.thought:
+                        texto_turno += parte.text
+                        yield {"tipo": "texto", "delta": parte.text}
+        except Exception as exc:  # queda no meio do stream: o usuário vê o erro, não um 500
+            yield {
+                "tipo": "erro",
+                "mensagem": f"A conexão com o modelo caiu no meio da resposta ({type(exc).__name__}).",
+            }
+            return
+        tokens_entrada += entrada
+        tokens_saida += saida
+        texto_total += texto_turno
+
+        if not partes:
+            yield {"tipo": "erro", "mensagem": "O modelo não devolveu resposta."}
+            return
+        contents.append(types.Content(role="model", parts=partes))
+
         if not chamadas:
-            resposta.texto = (r.text or "").strip()
-            return resposta
+            texto, sugestoes = separar_sugestoes(texto_total)
+            yield {
+                "tipo": "fim",
+                "texto": texto,
+                "sugestoes": sugestoes,
+                "modelo": usado,
+                "iteracoes": iteracao,
+                "tokens": tokens_entrada + tokens_saida,
+            }
+            return
 
-        partes = []
+        respostas = []
         for chamada in chamadas:
             argumentos = dict(chamada.args or {})
+            yield {"tipo": "passo", "ferramenta": chamada.name, "argumentos": argumentos, "estado": "rodando"}
             inicio = time.monotonic()
             resultado = ferramentas.executar(chamada.name, argumentos)
-            passo = Passo(
-                ferramenta=chamada.name,
-                argumentos=argumentos,
-                resumo=ferramentas.resumo_para_log(resultado),
-                sql=resultado.get("sql_executado"),
-                erro="erro" in resultado,
-                duracao_ms=int((time.monotonic() - inicio) * 1000),
-            )
-            resposta.passos.append(passo)
-            log.info("ferramenta %s %s -> %s", chamada.name, argumentos, passo.resumo[:120])
-            partes.append(types.Part.from_function_response(name=chamada.name, response={"resultado": resultado}))
+            figura = resultado.pop("_figura", None)
+            duracao = int((time.monotonic() - inicio) * 1000)
+            yield {
+                "tipo": "passo",
+                "ferramenta": chamada.name,
+                "argumentos": argumentos,
+                "estado": "erro" if "erro" in resultado else "ok",
+                "sql": resultado.get("sql_executado"),
+                "resumo": ferramentas.resumo_para_log(resultado),
+                "duracao_ms": duracao,
+            }
+            if figura:
+                yield {
+                    "tipo": "grafico",
+                    "id": resultado.get("grafico_id"),
+                    "titulo": argumentos.get("titulo"),
+                    "figura": figura,
+                }
+            log.info("ferramenta %s %s (%sms)", chamada.name, argumentos, duracao)
+            respostas.append(types.Part.from_function_response(name=chamada.name, response={"resultado": resultado}))
         # Todos os resultados de um turno vão juntos, numa mensagem só.
-        contents.append(types.Content(role="user", parts=partes))
+        contents.append(types.Content(role="user", parts=respostas))
 
-    resposta.interrompida = True
-    resposta.texto = (
-        "Parei antes de concluir: a pergunta exigiu mais passos do que o limite configurado. "
-        "Tente uma pergunta mais específica."
-    )
-    return resposta
+    texto, sugestoes = separar_sugestoes(texto_total)
+    yield {
+        "tipo": "fim",
+        "texto": (texto + "\n\n" if texto else "")
+        + "Parei antes de concluir: a pergunta exigiu mais passos do que o limite. Tente algo mais específico.",
+        "sugestoes": sugestoes,
+        "modelo": usado,
+        "iteracoes": MAX_ITERACOES,
+        "tokens": tokens_entrada + tokens_saida,
+        "interrompida": True,
+    }
+
+
+def perguntar(
+    pergunta: str, historico: list[dict] | None = None, contexto: str | None = None, modelo: str | None = None
+) -> Resposta:
+    """Versão síncrona: consome os eventos e devolve a resposta inteira."""
+    r = Resposta(texto="")
+    for ev in eventos(pergunta, historico, contexto, modelo):
+        if ev["tipo"] == "erro":
+            raise AgenteIndisponivel(ev["mensagem"])
+        if ev["tipo"] == "passo" and ev["estado"] != "rodando":
+            r.passos.append(
+                Passo(
+                    ev["ferramenta"],
+                    ev["argumentos"],
+                    ev.get("resumo", ""),
+                    ev.get("sql"),
+                    ev["estado"] == "erro",
+                    ev.get("duracao_ms", 0),
+                )
+            )
+        elif ev["tipo"] == "grafico":
+            r.graficos.append({"id": ev["id"], "titulo": ev["titulo"]})
+        elif ev["tipo"] == "fim":
+            r.texto, r.sugestoes, r.modelo = ev["texto"], ev["sugestoes"], ev["modelo"]
+            r.iteracoes, r.tokens_saida = ev["iteracoes"], ev["tokens"]
+            r.interrompida = ev.get("interrompida", False)
+    return r

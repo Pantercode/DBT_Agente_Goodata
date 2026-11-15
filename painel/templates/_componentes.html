@@ -19,7 +19,7 @@
       <p class="aviso-titulo">Coleta de {{ quarentena.dt.strftime('%d/%m') }} em quarentena</p>
       <p class="aviso-texto">Mostrando a de {{ quarentena.dt_em_uso.strftime('%d/%m') }}, a última coerente. {{ quarentena.motivo_quarentena | frase }}.</p>
       {% else %}
-      <p class="aviso-titulo">{% if st == 'sucesso' %}Dados auditados{% elif st == 'sucesso_com_avisos' %}Auditados, com avisos{% else %}Última publicação bloqueada{% endif %}</p>
+      <p class="aviso-titulo">{% if st == 'sucesso' %}Dados auditados{% elif st in ('sucesso_com_avisos', 'sucesso_com_quarentena') %}Auditados, com avisos{% else %}Última publicação bloqueada{% endif %}</p>
       <p class="aviso-texto">{% if lead %}{{ lead }}{% else %}Todos os testes passaram antes da publicação.{% endif %}</p>
       {% endif %}
     </div>

@@ -1,0 +1,118 @@
+# Exemplos verificados: pergunta -> SQL que responde certo.
+#
+# Para cada pergunta do usuário, os 3 exemplos mais parecidos entram no
+# contexto do agente (ver agente/memoria.py). É a forma de "treinar" o agente
+# sem fine-tuning: ele vê como as perguntas desse domínio são respondidas
+# corretamente neste schema.
+#
+# Regra para entrar aqui: o SQL roda em `publicado`, foi conferido contra o
+# painel, e segue as regras de métrica (docs/metricas.md). tests/test_agente.py
+# executa todos os SQL desta lista; exemplo quebrado falha o CI.
+#
+# Novos exemplos chegam pelo feedback do chat (👍) e entram aqui depois de
+# revisão: python -m agente.promover_feedback
+
+exemplos:
+  - pergunta: Quantos museus ativos existem no Brasil?
+    sql: select qtd_museus_ativos, qtd_museus_cadastrados from publicado.agg_cobertura_brasil
+    nota: número de capa; nunca contar linhas de obt_museus sem filtrar is_aberto
+
+  - pergunta: Quais UFs têm menos museus por habitante?
+    sql: |
+      select uf_sigla, museus_por_100k_hab, qtd_museus_ativos, populacao
+      from publicado.agg_cobertura_uf order by museus_por_100k_hab asc limit 5
+    nota: razão já calculada no mart
+
+  - pergunta: Quantos museus por 100 mil habitantes tem a região Nordeste?
+    sql: |
+      select regiao_nome,
+             sum(qtd_museus_ativos) * 100000.0 / sum(populacao) as museus_por_100k_hab
+      from publicado.agg_cobertura_uf where regiao_sigla = 'NE' group by regiao_nome
+    nota: região = recalcular numerador/denominador; nunca avg(museus_por_100k_hab)
+
+  - pergunta: Qual a maior cidade sem nenhum museu ativo?
+    sql: |
+      select municipio_rotulo, populacao from publicado.agg_cobertura_municipio
+      where not tem_museu_ativo order by populacao desc limit 5
+
+  - pergunta: Que porcentagem da população mora em cidade sem museu, por região?
+    sql: |
+      select regiao_nome, sum(populacao_sem_museu) * 1.0 / sum(populacao) as pct_populacao_sem_museu
+      from publicado.agg_cobertura_uf group by regiao_nome order by 2 desc
+
+  - pergunta: Museus públicos têm mais plano museológico que privados?
+    sql: |
+      select natureza_administrativa, count(*) as museus,
+             avg(case when gestao.plano_museologico then 1.0 else 0.0 end) as pct_plano
+      from publicado.obt_museus
+      where is_aberto and natureza_administrativa in ('Pública', 'Privada', 'Mista')
+      group by 1 order by 3 desc
+    nota: STRUCT gestao acessado com ponto
+
+  - pergunta: Qual o índice de gestão médio dos museus municipais?
+    sql: |
+      select perfil, sum(indice_gestao_medio * qtd_museus_ativos) / sum(qtd_museus_ativos) as indice_medio,
+             sum(qtd_museus_ativos) as museus
+      from publicado.agg_gestao_por_perfil where perfil = 'Municipal' group by perfil
+    nota: média ponderada pelo número de museus, não média simples das linhas
+
+  - pergunta: Quais recursos de acessibilidade são mais comuns?
+    sql: |
+      select dimensao, recurso, sum(qtd_museus_com_recurso) as museus
+      from publicado.agg_recursos_acessibilidade group by 1, 2 order by 3 desc limit 10
+
+  - pergunta: Quantos museus ativos não têm nenhum recurso de acessibilidade?
+    sql: |
+      select count(*) as museus_sem_acessibilidade,
+             count(*) * 1.0 / (select qtd_museus_ativos from publicado.agg_cobertura_brasil) as pct
+      from publicado.obt_museus where is_aberto and acessibilidade.dimensoes_atendidas = 0
+
+  - pergunta: Quantos museus comunitários existem na Bahia?
+    sql: |
+      select count(*) as museus_comunitarios_ativos
+      from publicado.obt_museus o
+      join publicado.dim_museu d on d.museu_id = o.museu_id and d.is_versao_atual
+      where o.uf_sigla = 'BA' and o.is_aberto and d.is_comunitario
+    nota: is_comunitario está em dim_museu (versão atual), não na OBT
+
+  - pergunta: Em que década mais museus foram abertos?
+    sql: |
+      select decada_abertura, sum(qtd_museus) as museus
+      from publicado.agg_aberturas_por_decada group by 1 order by 2 desc limit 5
+
+  - pergunta: Quais tipologias de acervo são mais frequentes?
+    sql: |
+      select tipologia, count(*) as museus_com_acervo, sum(peso) as museus_alocados
+      from publicado.bridge_museu_tipologia group by tipologia order by 2 desc limit 10
+    nota: count(*) = museus que têm a tipologia; sum(peso) = alocação que fecha com o total
+
+  - pergunta: Quanto do cadastro está sem coordenada, por região?
+    sql: |
+      select u.regiao_nome, sum(c.qtd_museus - c.qtd_preenchidos) as sem_coordenada,
+             1 - sum(c.qtd_preenchidos) * 1.0 / sum(c.qtd_museus) as pct_sem
+      from publicado.mart_completude_cadastro c
+      join publicado.dim_uf u using (uf_sigla)
+      where c.campo = 'Coordenadas' group by 1 order by 3 desc
+
+  - pergunta: Os dados de hoje são confiáveis? Alguma coleta foi descartada?
+    sql: |
+      select fonte, dt, status, motivo_quarentena, is_particao_em_uso
+      from publicado.mart_saude_coleta order by dt desc
+    nota: quarentena = coleta descartada; o painel usa a última partição válida
+
+  - pergunta: Quantos Pontos de Memória existem por região?
+    sql: |
+      select regiao_sigla, count(*) as pontos_de_memoria
+      from publicado.fct_pontos_memoria group by 1 order by 2 desc
+
+  - pergunta: Quais municípios têm mais museus ativos?
+    sql: |
+      select municipio_rotulo, qtd_museus_ativos, museus_por_100k_hab
+      from publicado.agg_cobertura_municipio order by qtd_museus_ativos desc limit 10
+
+  - pergunta: Quantos museus fecharam ou mudaram de status desde o início do histórico?
+    sql: |
+      select count(distinct museu_id) as museus_com_mais_de_uma_versao
+      from publicado.dim_museu
+      where museu_id in (select museu_id from publicado.dim_museu group by 1 having count(*) > 1)
+    nota: histórico SCD2; começa na primeira extração (14/11/2026)
