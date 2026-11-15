@@ -46,8 +46,15 @@ MODELO_PADRAO = "gemini-3.8-flash"
 # free tier), cai para o próximo. A troca fica registrada no evento `fim`.
 MODELOS_RESERVA = ("gemini-3.5-flash", "gemini-3.1-flash-lite")
 MAX_ITERACOES = 8
-# Sem isso o SDK tenta de novo por vários minutos e a função da Vercel morre antes.
-TIMEOUT_MS = 45_000
+# Tempo máximo esperando um modelo começar a responder. Curto e sem retry no
+# mesmo modelo: no free tier, modelo lento quase sempre é modelo sobrecarregado,
+# e é mais rápido trocar do que esperar (antes: 45 s x 2 tentativas por modelo,
+# o que deixava a tela minutos em "Pensando").
+TIMEOUT_MS = 25_000
+# Modelo que deu 429/timeout fica de fora por um tempo; as próximas perguntas
+# vão direto para um que está respondendo.
+RESFRIAMENTO_S = 180
+_resfriando: dict[str, float] = {}
 
 # O prompt pede que a resposta termine com um bloco de sugestões; ele é
 # separado do texto e vira botões no chat.
@@ -93,7 +100,7 @@ def _cliente() -> genai.Client:
         raise AgenteIndisponivel("GEMINI_API_KEY não configurada. Defina no .env (local) ou nas variáveis da Vercel.")
     return genai.Client(
         api_key=chave,
-        http_options=types.HttpOptions(timeout=TIMEOUT_MS, retry_options=types.HttpRetryOptions(attempts=2)),
+        http_options=types.HttpOptions(timeout=TIMEOUT_MS, retry_options=types.HttpRetryOptions(attempts=1)),
     )
 
 
@@ -127,31 +134,45 @@ def _historico_para_contents(historico: list[dict]) -> list[types.Content]:
     return contents
 
 
-def _abrir_stream(cliente: genai.Client, modelos: list[str], contents, config):
-    """Abre o stream no primeiro modelo que responder.
+def _ordenar_por_disponibilidade(modelos: list[str]) -> list[str]:
+    """Modelos em resfriamento vão para o fim da fila (continuam como último recurso)."""
+    agora = time.monotonic()
+    livres = [m for m in modelos if _resfriando.get(m, 0) <= agora]
+    return livres + [m for m in modelos if m not in livres]
 
-    O erro de cota/sobrecarga só aparece ao ler o primeiro pedaço, então o
-    primeiro pedaço é lido aqui, dentro do try, e devolvido junto.
-    503/504/timeout e 429 passam para o próximo modelo (no free tier a cota é
-    por modelo). 404 também (modelo aposentado para a chave). Outros 4xx não
-    melhoram trocando de modelo."""
+
+def _abrir_stream(cliente: genai.Client, modelos: list[str], contents, config):
+    """Gerador: tenta os modelos em ordem e devolve (modelo, primeiro_pedaco, stream).
+
+    Cada tentativa que falha vira um evento `aviso`, para a tela mostrar o que
+    está acontecendo em vez de ficar parada. O erro de cota/sobrecarga só aparece
+    ao ler o primeiro pedaço, por isso ele é lido aqui.
+    429, 5xx, 404 e timeout passam para o próximo modelo e colocam o atual em
+    resfriamento. Outros 4xx não melhoram trocando de modelo."""
     ultimo_erro: Exception | None = None
     so_cota = True
-    for modelo in modelos:
+    fila = _ordenar_por_disponibilidade(modelos)
+    for i, modelo in enumerate(fila):
         try:
             stream = cliente.models.generate_content_stream(model=modelo, contents=contents, config=config)
             primeiro = next(iter(stream), None)
+            _resfriando.pop(modelo, None)
             return modelo, primeiro, stream
         except genai_errors.ClientError as exc:
             if exc.code not in (404, 429):
                 raise AgenteIndisponivel(f"A API Gemini recusou a requisição ({exc.code}).") from exc
             so_cota = so_cota and exc.code == 429
-            log.warning("modelo %s recusou (%s), tentando o próximo", modelo, exc.code)
+            motivo = "sem cota no momento" if exc.code == 429 else "indisponível para esta chave"
             ultimo_erro = exc
         except Exception as exc:  # 5xx, timeout do transporte HTTP (httpx levanta tipos próprios), rede
             so_cota = False
-            log.warning("modelo %s indisponível (%s: %s), tentando o próximo", modelo, type(exc).__name__, exc)
+            motivo = "lento ou sobrecarregado"
             ultimo_erro = exc
+        _resfriando[modelo] = time.monotonic() + RESFRIAMENTO_S
+        log.warning("modelo %s %s (%s), tentando o próximo", modelo, motivo, type(ultimo_erro).__name__)
+        proximo = fila[i + 1] if i + 1 < len(fila) else None
+        if proximo:
+            yield {"tipo": "aviso", "mensagem": f"{modelo} {motivo}; tentando {proximo}"}
     if so_cota:
         raise AgenteIndisponivel(
             "Limite de uso da API Gemini atingido em todos os modelos. Tente de novo em um minuto."
@@ -189,7 +210,7 @@ def eventos(
 
     for iteracao in range(1, MAX_ITERACOES + 1):
         try:
-            usado, primeiro, stream = _abrir_stream(cliente, modelos, contents, config)
+            usado, primeiro, stream = yield from _abrir_stream(cliente, modelos, contents, config)
         except AgenteIndisponivel as exc:
             yield {"tipo": "erro", "mensagem": str(exc)}
             return

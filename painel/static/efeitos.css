@@ -138,3 +138,8 @@
   ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
   .tempo::before { width: 96%; }
 }
+
+/* troca de modelo no meio da resposta e contador do "Pensando" */
+.passo-aviso .passo-icone { border: 0; background: var(--atencao); opacity: .7; width: 8px; height: 8px; margin-left: 3px; }
+.passo-aviso .passo-texto { color: var(--tinta-muda); font-size: .75rem; }
+.pensando[data-seg]::before { content: attr(data-seg) " · "; color: var(--tinta-muda); font-variant-numeric: tabular-nums; }

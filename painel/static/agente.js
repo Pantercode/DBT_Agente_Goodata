@@ -152,6 +152,13 @@
       rolar(ui.corpo);
     };
 
+    // Contador de segundos enquanto nada chega: a tela nunca fica parada sem sinal.
+    const inicio = performance.now();
+    const relogio = setInterval(() => {
+      const el = ui.corpo.querySelector('.pensando');
+      if (el) el.dataset.seg = `${Math.round((performance.now() - inicio) / 1000)} s`;
+    }, 1000);
+
     try {
       const r = await fetch('/api/agente/stream', {
         method: 'POST',
@@ -173,6 +180,7 @@
           if (!linha) continue;
           const ev = JSON.parse(linha);
           if (ev.tipo === 'passo') passo(ui, ev);
+          else if (ev.tipo === 'aviso') aviso(ui, ev.mensagem);
           else if (ev.tipo === 'grafico') grafico(ui, ev);
           else if (ev.tipo === 'texto') {
             textoAoVivo += ev.delta;
@@ -186,8 +194,18 @@
       ui.li.classList.add('msg-erro');
       ui.corpo.textContent = e.message;
     } finally {
+      clearInterval(relogio);
       botao.disabled = false;
     }
+  }
+
+  // Troca de modelo (cota, lentidão): aparece como uma linha discreta acima da resposta.
+  function aviso(ui, mensagem) {
+    const item = document.createElement('li');
+    item.className = 'passo passo-aviso';
+    item.innerHTML = `<span class="passo-icone" aria-hidden="true"></span><span class="passo-texto">${escapar(mensagem)}</span><span class="passo-tempo"></span>`;
+    ui.passos.appendChild(item);
+    rolar(item);
   }
 
   form.addEventListener('submit', ev => {

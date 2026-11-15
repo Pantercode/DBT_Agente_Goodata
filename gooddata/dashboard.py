@@ -382,15 +382,16 @@ def main() -> int:
     return 0
 
 
-
 def exportar_pdf(destino: str = "docs/gooddata-dashboard.pdf") -> str:
     """Exporta o dashboard em PDF pelo MCP (run_export) e salva no repositório."""
     import base64
     from pathlib import Path
 
     pub = Publicador()
-    r = pub.mcp.chamar("call_tool", {"name": "run_export",
-                                      "arguments": {"mode": "visual", "dashboard_id": DASHBOARD_ID, "format": "PDF"}})
+    r = pub.mcp.chamar(
+        "call_tool",
+        {"name": "run_export", "arguments": {"mode": "visual", "dashboard_id": DASHBOARD_ID, "format": "PDF"}},
+    )
     info = json.loads(r["content"][0]["text"])
     if info.get("inline_base64"):
         conteudo = base64.b64decode(info["inline_base64"])
