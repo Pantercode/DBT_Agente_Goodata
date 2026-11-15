@@ -7,11 +7,15 @@ Variáveis (.env):
     GOODDATA_HOST           https://<sua-org>.cloud.gooddata.com
     GOODDATA_TOKEN          token de API (Settings > API tokens)
     GOODDATA_WORKSPACE      id do workspace (padrão: museus_br)
-    GD_DESTINO              motherduck | postgres
+    GD_DESTINO              gdstorage (padrão) | motherduck | postgres
     MOTHERDUCK_TOKEN / MOTHERDUCK_DATABASE   (se motherduck)
     GD_PG_URL                                (se postgres)
 
-Ordem: fonte de dados -> workspace -> LDM -> métricas. Cada passo é
+Destino `gdstorage`: armazenamento gerenciado do próprio GoodData. Os CSV de
+`publicado` sobem pela API (upload_csv) e não é preciso nenhum banco externo.
+É o que funciona no trial. motherduck/postgres usam gooddata/carregar_destino.py.
+
+Ordem: fonte de dados -> dados -> workspace -> LDM -> métricas. Cada passo é
 idempotente (create_or_update / put declarativo). O layout aplicado é salvo
 em gooddata/layout/ para revisão em PR.
 
@@ -75,12 +79,15 @@ def modelo_analitico() -> dict:
     }
 
 
+def _destino() -> str:
+    return os.environ.get("GD_DESTINO", "gdstorage")
+
+
 def _fonte_de_dados():
     from gooddata_sdk import BasicCredentials, CatalogDataSourceMotherDuck, CatalogDataSourcePostgres
     from gooddata_sdk.catalog.entity import TokenCredentials
 
-    destino = os.environ.get("GD_DESTINO", "motherduck")
-    if destino == "motherduck":
+    if _destino() == "motherduck":
         banco = os.environ.get("MOTHERDUCK_DATABASE", "museus_br")
         return CatalogDataSourceMotherDuck(
             id=DATA_SOURCE_ID,
@@ -99,25 +106,62 @@ def _fonte_de_dados():
     )
 
 
+def _gdstorage(sdk, host: str, token: str) -> None:
+    """Cria (se preciso) a fonte GDSTORAGE e sobe gd_municipio / gd_museu como CSV."""
+    import httpx
+
+    from gooddata import exportar_csv
+    from gooddata.carregar_destino import TABELAS
+
+    h = {"Authorization": f"Bearer {token}", "Content-Type": "application/vnd.gooddata.api+json"}
+    url = f"{host.rstrip('/')}/api/v1/entities/dataSources"
+    if httpx.get(f"{url}/{DATA_SOURCE_ID}", headers=h, timeout=60).status_code == 404:
+        corpo = {
+            "data": {
+                "id": DATA_SOURCE_ID,
+                "type": "dataSource",
+                "attributes": {"name": "Museus do Brasil", "type": "GDSTORAGE", "schema": SCHEMA_DESTINO},
+            }
+        }
+        httpx.post(url, headers=h, json=corpo, timeout=60).raise_for_status()
+        print("fonte GDSTORAGE criada")
+    exportar_csv.main()
+    for tabela in TABELAS:
+        sdk.catalog_data_source.upload_csv(DATA_SOURCE_ID, exportar_csv.DESTINO / f"{tabela}.csv", tabela)
+        print(f"{tabela}: enviado")
+
+
 def aplicar() -> None:
     from gooddata_sdk import CatalogDeclarativeAnalytics, CatalogWorkspace, GoodDataSdk
 
-    sdk = GoodDataSdk.create(os.environ["GOODDATA_HOST"], os.environ["GOODDATA_TOKEN"])
+    host, token = os.environ["GOODDATA_HOST"], os.environ["GOODDATA_TOKEN"]
+    sdk = GoodDataSdk.create(host, token)
     workspace = os.environ.get("GOODDATA_WORKSPACE", "museus_br")
 
-    sdk.catalog_data_source.create_or_update_data_source(_fonte_de_dados())
-    teste = sdk.catalog_data_source.test_data_sources_connection(
-        [sdk.catalog_data_source.get_data_source(DATA_SOURCE_ID)]
-    )
-    print("conexão:", teste)
+    if _destino() == "gdstorage":
+        _gdstorage(sdk, host, token)
+        schema = None
+    else:
+        sdk.catalog_data_source.create_or_update_data_source(_fonte_de_dados())
+        schema = SCHEMA_DESTINO
 
-    sdk.catalog_workspace.create_or_update(CatalogWorkspace(workspace_id=workspace, name="Museus do Brasil"))
-    sdk.catalog_workspace_content.put_declarative_ldm(workspace, ldm(DATA_SOURCE_ID, SCHEMA_DESTINO))
+    # Workspace que já existe (criado pela interface) não é renomeado.
+    existentes = {w.id for w in sdk.catalog_workspace.list_workspaces()}
+    if workspace not in existentes:
+        sdk.catalog_workspace.create_or_update(CatalogWorkspace(workspace_id=workspace, name="Museus do Brasil"))
+
+    sdk.catalog_workspace_content.put_declarative_ldm(workspace, ldm(DATA_SOURCE_ID, schema))
+    # Mescla: só as métricas deste repositório são substituídas. Visualizações e
+    # dashboards criados na interface ou pelo MCP continuam lá.
+    atual = sdk.catalog_workspace_content.get_declarative_analytics_model(workspace).to_dict()
+    analytics = atual.get("analytics") or {}
+    nossas = {m["id"]: m for m in modelo_analitico()["analytics"]["metrics"]}
+    analytics["metrics"] = [m for m in analytics.get("metrics", []) if m["id"] not in nossas] + list(nossas.values())
     sdk.catalog_workspace_content.put_declarative_analytics_model(
-        workspace, CatalogDeclarativeAnalytics.from_dict(modelo_analitico())
+        workspace, CatalogDeclarativeAnalytics.from_dict({"analytics": analytics})
     )
     exportar(sdk, workspace)
-    print(f"workspace {workspace} provisionado em {os.environ['GOODDATA_HOST']}")
+    print(f"workspace {workspace} provisionado em {host}: {len(nossas)} métricas, LDM com 2 datasets")
 
 
 def exportar(sdk=None, workspace: str | None = None) -> None:

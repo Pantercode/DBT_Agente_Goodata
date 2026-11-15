@@ -15,30 +15,34 @@ flowchart LR
 
 ## Passo a passo
 
-1. **Destino.** O GoodData Cloud não lê o DuckDB local. Escolha um:
-   - MotherDuck: crie um token em app.motherduck.com e ponha `MOTHERDUCK_TOKEN` no `.env`;
-   - PostgreSQL (Neon, Supabase...): ponha `GD_PG_URL=postgresql://...` e `GD_DESTINO=postgres`.
+O que foi aplicado no workspace `Goodata_agentes` (trial), em 15/11/2026:
 
+1. **Dados no armazenamento gerenciado do GoodData** (fonte `GDSTORAGE`, id `museus_br`).
+   Não precisa de banco externo: `gd_municipio` e `gd_museu` sobem como CSV pela API.
+2. **Modelo lógico + 11 métricas** por código, mesclando com o que já existe no workspace:
    ```bash
-   python -m gooddata.carregar_destino motherduck
+   python -m gooddata.provisionar            # GD_DESTINO=gdstorage é o padrão
+   ```
+   As métricas executadas no GoodData batem com o painel em Python (3.775 museus ativos,
+   4.159 cadastrados, 25,1% dos municípios com museu, 31,5% da população sem museu).
+3. **Dashboard "Museus do Brasil" pelo MCP do GoodData** (10 visualizações, filtros de
+   região e UF, 4 seções), declarado em [`gooddata/dashboard.py`](../gooddata/dashboard.py):
+   ```bash
+   python -m gooddata.dashboard              # cria pelo MCP; o que já existe é atualizado via REST
+   python -m gooddata.dashboard --validar    # executa cada visualização e mostra os números
+   ```
+4. **Exportar o estado do workspace** para revisão em PR:
+   ```bash
+   python -m gooddata.provisionar --exportar
    ```
 
-2. **Workspace.** Com `GOODDATA_HOST` e `GOODDATA_TOKEN` no `.env`:
+Variáveis no `.env`: `GOODDATA_HOST`, `GOODDATA_WORKSPACE`, `GOODDATA_TOKEN`.
+O `.mcp.json` usa as mesmas para o Claude Code falar com o MCP; `gooddata/mcp_cliente.py`
+faz o mesmo em Python.
 
-   ```bash
-   python -m gooddata.provisionar --validar   # offline: LDM + MAQL
-   python -m gooddata.provisionar             # cria fonte, workspace, LDM e métricas
-   ```
-
-3. **Dashboard via MCP.** O `.mcp.json` na raiz registra o servidor MCP do
-   GoodData para o Claude Code, lendo `GOODDATA_HOST`, `GOODDATA_WORKSPACE` e
-   `GOODDATA_TOKEN` do ambiente. Abra o Claude Code na pasta do projeto com
-   essas variáveis definidas, aprove o servidor `gooddata` e peça o dashboard.
-   Depois:
-
-   ```bash
-   python -m gooddata.provisionar --exportar  # traz visualizações e dashboard para gooddata/layout/
-   ```
+Limitações do trial: as ferramentas `execute_visualization` do MCP não estão liberadas
+(a conferência usa a API de execução). MotherDuck/PostgreSQL continuam suportados
+(`GD_DESTINO=motherduck|postgres`) para quando o GoodData ler de um warehouse.
 
 ## Modelo lógico
 

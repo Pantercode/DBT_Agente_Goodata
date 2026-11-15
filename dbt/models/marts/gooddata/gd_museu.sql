@@ -1,6 +1,8 @@
 {#
   Dataset "Museu" do modelo lógico do GoodData (foto atual, um por museu).
-  Referencia gd_municipio por municipio_id.
+  Referencia gd_municipio por municipio_id. Museu sem município no cadastro
+  entra com municipio_id nulo: some do recorte por UF ("vazio"), mas conta no
+  total, que precisa bater com o painel.
 #}
 
 select
@@ -24,4 +26,3 @@ select
     coalesce(qtd_pessoas_trabalham, 0)                          as qtd_pessoas_trabalham,
     coalesce(qtd_bens_culturais, 0)                             as qtd_bens_culturais
 from {{ ref('int_museus__atual') }}
-where municipio_id is not null

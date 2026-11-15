@@ -104,6 +104,15 @@
         "tags": [
           "core"
         ]
+      },
+      {
+        "id": "qtd_municipios",
+        "title": "Municípios",
+        "content": {
+          "format": "#,##0",
+          "maql": "SELECT COUNT({attribute/municipio.municipio_id})"
+        },
+        "tags": []
       }
     ]
   }

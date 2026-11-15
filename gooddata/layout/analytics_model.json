@@ -1,0 +1,182 @@
+{
+  "analytics": {
+    "analyticalDashboards": [],
+    "analyticalDashboardExtensions": [],
+    "attributeHierarchies": [],
+    "dashboardPlugins": [],
+    "filterContexts": [],
+    "metrics": [
+      {
+        "content": {
+          "format": "#,##0.0",
+          "maql": "SELECT SUM({fact/museu.indice_gestao_se_ativo}) / {metric/museus_ativos}"
+        },
+        "id": "indice_gestao_medio",
+        "title": "Índice de gestão médio (museus ativos)",
+        "createdAt": "2026-11-15 11:33",
+        "createdBy": {
+          "id": "ed8a2db2-2911-4272-9ef5-ac12d52d9992",
+          "type": "user"
+        },
+        "tags": [
+          "core"
+        ]
+      },
+      {
+        "content": {
+          "format": "#,##0",
+          "maql": "SELECT SUM({fact/museu.is_aberto})"
+        },
+        "id": "museus_ativos",
+        "title": "Museus ativos",
+        "createdAt": "2026-11-15 11:33",
+        "createdBy": {
+          "id": "ed8a2db2-2911-4272-9ef5-ac12d52d9992",
+          "type": "user"
+        },
+        "tags": [
+          "core"
+        ]
+      },
+      {
+        "content": {
+          "format": "#,##0",
+          "maql": "SELECT COUNT({attribute/museu.museu_id})"
+        },
+        "id": "museus_cadastrados",
+        "title": "Museus cadastrados",
+        "createdAt": "2026-11-15 11:33",
+        "createdBy": {
+          "id": "ed8a2db2-2911-4272-9ef5-ac12d52d9992",
+          "type": "user"
+        },
+        "tags": [
+          "core"
+        ]
+      },
+      {
+        "content": {
+          "format": "#,##0.00",
+          "maql": "SELECT {metric/museus_ativos} * 100000 / {metric/populacao}"
+        },
+        "id": "museus_por_100k_hab",
+        "title": "Museus ativos por 100 mil habitantes",
+        "createdAt": "2026-11-15 11:33",
+        "createdBy": {
+          "id": "ed8a2db2-2911-4272-9ef5-ac12d52d9992",
+          "type": "user"
+        },
+        "tags": [
+          "core"
+        ]
+      },
+      {
+        "content": {
+          "format": "#,##0.0%",
+          "maql": "SELECT SUM({fact/municipio.tem_museu_ativo}) / COUNT({attribute/municipio.municipio_id})"
+        },
+        "id": "pct_municipios_com_museu",
+        "title": "% de municípios com museu ativo",
+        "createdAt": "2026-11-15 11:33",
+        "createdBy": {
+          "id": "ed8a2db2-2911-4272-9ef5-ac12d52d9992",
+          "type": "user"
+        },
+        "tags": [
+          "core"
+        ]
+      },
+      {
+        "content": {
+          "format": "#,##0.0%",
+          "maql": "SELECT SUM({fact/museu.sem_acessibilidade}) / {metric/museus_ativos} WHERE {label/museu.status_funcionamento} = \"Aberto\""
+        },
+        "id": "pct_museus_sem_acessibilidade",
+        "title": "% de museus ativos sem nenhum recurso de acessibilidade",
+        "createdAt": "2026-11-15 11:33",
+        "createdBy": {
+          "id": "ed8a2db2-2911-4272-9ef5-ac12d52d9992",
+          "type": "user"
+        },
+        "tags": [
+          "core"
+        ]
+      },
+      {
+        "content": {
+          "format": "#,##0.0%",
+          "maql": "SELECT SUM({fact/museu.possui_plano_museologico}) / SUM({fact/museu.respondeu_plano_museologico}) WHERE {label/museu.status_funcionamento} = \"Aberto\""
+        },
+        "id": "pct_plano_museologico",
+        "title": "% com plano museológico (entre quem respondeu)",
+        "createdAt": "2026-11-15 11:33",
+        "createdBy": {
+          "id": "ed8a2db2-2911-4272-9ef5-ac12d52d9992",
+          "type": "user"
+        }
+      },
+      {
+        "content": {
+          "format": "#,##0.0%",
+          "maql": "SELECT {metric/populacao_sem_museu} / {metric/populacao}"
+        },
+        "id": "pct_populacao_sem_museu",
+        "title": "% da população em município sem museu",
+        "createdAt": "2026-11-15 11:33",
+        "createdBy": {
+          "id": "ed8a2db2-2911-4272-9ef5-ac12d52d9992",
+          "type": "user"
+        },
+        "tags": [
+          "core"
+        ]
+      },
+      {
+        "content": {
+          "format": "#,##0",
+          "maql": "SELECT SUM({fact/municipio.populacao})"
+        },
+        "id": "populacao",
+        "title": "População (Censo 2022)",
+        "createdAt": "2026-11-15 11:33",
+        "createdBy": {
+          "id": "ed8a2db2-2911-4272-9ef5-ac12d52d9992",
+          "type": "user"
+        }
+      },
+      {
+        "content": {
+          "format": "#,##0",
+          "maql": "SELECT SUM({fact/municipio.populacao_sem_museu})"
+        },
+        "id": "populacao_sem_museu",
+        "title": "População em municípios sem museu",
+        "createdAt": "2026-11-15 11:33",
+        "createdBy": {
+          "id": "ed8a2db2-2911-4272-9ef5-ac12d52d9992",
+          "type": "user"
+        }
+      },
+      {
+        "content": {
+          "format": "#,##0",
+          "maql": "SELECT COUNT({attribute/municipio.municipio_id})"
+        },
+        "id": "qtd_municipios",
+        "title": "Municípios",
+        "createdAt": "2026-11-15 11:33",
+        "createdBy": {
+          "id": "ed8a2db2-2911-4272-9ef5-ac12d52d9992",
+          "type": "user"
+        }
+      }
+    ],
+    "visualizationObjects": [],
+    "exportDefinitions": [],
+    "memoryItems": [],
+    "parameters": [],
+    "documents": [],
+    "documentTemplates": [],
+    "pageTemplates": []
+  }
+}

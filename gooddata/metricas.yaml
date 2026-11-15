@@ -68,3 +68,8 @@ metricas:
     maql: >-
       SELECT SUM({fact/museu.sem_acessibilidade}) / {metric/museus_ativos}
       WHERE {label/museu.status_funcionamento} = "Aberto"
+
+  - id: qtd_municipios
+    titulo: Municípios
+    formato: "#,##0"
+    maql: SELECT COUNT({attribute/municipio.municipio_id})

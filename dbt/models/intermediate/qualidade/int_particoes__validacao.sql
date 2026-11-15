@@ -27,8 +27,10 @@
     materialized = 'incremental',
     incremental_strategy = 'delete+insert',
     unique_key = ['fonte', 'dt'],
-    on_schema_change = 'append_new_columns'
+    on_schema_change = 'append_new_columns',
+    pre_hook = "{% if is_incremental() %}delete from {{ this }} where (fonte, dt) not in (select entidade, dt from {{ source('tainacan', 'manifestos') }} where fonte = 'tainacan'){% endif %}"
 ) }}
+{#- pre_hook: partição apagada do lake (reextração, simulação desfeita) sai também daqui. -#}
 
 {% set tol = var('tolerancia_volume') %}
 

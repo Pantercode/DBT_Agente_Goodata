@@ -67,7 +67,8 @@ DATASETS = {
 }
 
 
-def ldm(data_source_id: str, schema: str) -> CatalogDeclarativeModel:
+def ldm(data_source_id: str, schema: str | None) -> CatalogDeclarativeModel:
+    """`schema` None = armazenamento gerenciado do GoodData (GDSTORAGE), onde a tabela não tem schema."""
     datasets = []
     for ds_id, spec in DATASETS.items():
         grain_col = spec["atributos"][0][0]
@@ -80,7 +81,7 @@ def ldm(data_source_id: str, schema: str) -> CatalogDeclarativeModel:
                     "dataSourceId": data_source_id,
                     "id": spec["tabela"],
                     "type": "dataSource",
-                    "path": [schema, spec["tabela"]],
+                    "path": [schema, spec["tabela"]] if schema else [spec["tabela"]],
                 },
                 "attributes": [
                     {
