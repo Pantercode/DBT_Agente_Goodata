@@ -1,0 +1,11 @@
+{
+  "fonte": "ibge",
+  "entidade": "populacao",
+  "dt": "2026-11-14",
+  "extraido_em": "2026-11-15T09:59:59+00:00",
+  "registros": 5570,
+  "total_informado_pela_origem": null,
+  "sha256": "95a397c4378a00fce31d138eddc5309d09e6373511b9ea7475aaf1235612011c",
+  "duracao_s": 0.0,
+  "parametros": {}
+}

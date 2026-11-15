@@ -1,0 +1,20 @@
+-r requirements.txt
+
+# ingestão
+httpx==0.28.1
+tenacity==9.1.4
+pyarrow==26.0.1
+
+# transformação
+dbt-core==1.12.7
+dbt-duckdb==1.11.1
+
+# GoodData
+gooddata-sdk==1.80.0
+pyyaml==6.0.3
+
+# desenvolvimento
+uvicorn==0.54.0
+pytest==9.2.0
+ruff==0.17.5
+playwright==1.65.2

@@ -1,0 +1,62 @@
+version: 2
+
+models:
+  - name: gd_municipio
+    description: >
+      Dataset Município do GoodData. Achatado, booleanos como 0/1, população
+      sem museu pré-calculada. Mapeado em gooddata/modelo_logico.py.
+    config:
+      contract: { enforced: true }
+      meta:
+        consumidores: [gooddata]
+    columns:
+      - { name: municipio_id, data_type: integer, data_tests: [unique, not_null] }
+      - { name: municipio_rotulo, data_type: varchar }
+      - { name: municipio_nome, data_type: varchar }
+      - { name: uf_sigla, data_type: varchar }
+      - { name: regiao_sigla, data_type: varchar }
+      - { name: regiao_nome, data_type: varchar }
+      - { name: faixa_populacional, data_type: varchar }
+      - { name: classe_cobertura, data_type: varchar }
+      - { name: populacao, data_type: bigint }
+      - { name: qtd_museus_cadastrados, data_type: bigint }
+      - { name: qtd_museus_ativos, data_type: bigint }
+      - { name: tem_museu_ativo, data_type: integer }
+      - { name: populacao_sem_museu, data_type: bigint }
+
+  - name: gd_museu
+    description: Dataset Museu do GoodData (foto atual). Referencia gd_municipio.
+    config:
+      contract: { enforced: true }
+      meta:
+        consumidores: [gooddata]
+    data_tests:
+      - volume_estavel:
+          config: { tags: ["bloqueante"] }
+    columns:
+      - { name: museu_id, data_type: bigint, data_tests: [unique, not_null] }
+      - { name: nome_museu, data_type: varchar }
+      - { name: tipo_museu, data_type: varchar }
+      - { name: tematica, data_type: varchar }
+      - { name: status_funcionamento, data_type: varchar }
+      - { name: natureza_administrativa, data_type: varchar }
+      - { name: perfil_administrativo, data_type: varchar }
+      - { name: faixa_gestao, data_type: varchar }
+      - { name: decada_abertura, data_type: varchar }
+      - name: municipio_id
+        data_type: integer
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('gd_municipio')
+                field: municipio_id
+              config: { tags: ["bloqueante"] }
+      - { name: is_aberto, data_type: integer }
+      - { name: indice_gestao, data_type: integer }
+      - { name: indice_gestao_se_ativo, data_type: integer }
+      - { name: possui_plano_museologico, data_type: integer }
+      - { name: respondeu_plano_museologico, data_type: integer }
+      - { name: dimensoes_acessibilidade, data_type: integer }
+      - { name: sem_acessibilidade, data_type: integer }
+      - { name: qtd_pessoas_trabalham, data_type: bigint }
+      - { name: qtd_bens_culturais, data_type: bigint }

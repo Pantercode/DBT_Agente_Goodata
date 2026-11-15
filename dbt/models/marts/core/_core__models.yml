@@ -1,0 +1,168 @@
+version: 2
+
+models:
+  - name: dim_museu
+    description: >
+      Dimensão de museus SCD tipo 2, com vigência derivada das partições do
+      lake. Uma linha por versão. Para a foto atual filtre `is_versao_atual`.
+    config:
+      meta:
+        dono: analytics-engineering
+        sla: "D+1, até 08:00"
+    data_tests:
+      - scd2_valida:
+          arguments:
+            chave: museu_id
+          config: { tags: ["bloqueante"] }
+      - volume_estavel:
+          config: { tags: ["bloqueante"] }
+    columns:
+      - name: museu_sk
+        description: Chave substituta da versão (hash de museu_id + valido_de).
+        data_tests: [unique, not_null]
+      - name: museu_id
+        data_tests: [not_null]
+      - name: municipio_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_municipio')
+                field: municipio_id
+              config: { tags: ["bloqueante"] }
+      - name: valido_de
+        data_tests: [not_null]
+      - name: indice_gestao
+        description: "{{ doc('indice_gestao') }}"
+
+  - name: dim_municipio
+    description: Dimensão conformada de municípios (todos, com ou sem museu) com população do Censo.
+    columns:
+      - name: municipio_id
+        data_tests: [unique, not_null]
+      - name: populacao
+        data_tests:
+          - cobertura_minima:
+              arguments:
+                minimo: 0.999
+
+  - name: fct_museus_diario
+    description: >
+      Snapshot diário por museu. Incremental por partição (delete+insert no
+      DuckDB, insert_overwrite no BigQuery), reprocessando as últimas
+      `janela_reprocessamento_dias` partições a cada execução.
+    data_tests:
+      - unico_por:
+          arguments:
+            colunas: [museu_id, dt]
+          config: { tags: ["bloqueante"] }
+    columns:
+      - name: dt
+        description: "{{ doc('dt') }}"
+        data_tests:
+          - not_null
+          - atualizado_ha_no_maximo:
+              arguments:
+                dias: 2
+              config: { severity: warn }
+      - name: data_sk
+        data_tests:
+          - relationships:
+              arguments: { to: ref('dim_data'), field: data_sk }
+              config: { tags: ["bloqueante"] }
+      - name: uf_sigla
+        data_tests:
+          - relationships:
+              arguments: { to: ref('dim_uf'), field: uf_sigla }
+              config: { tags: ["bloqueante"] }
+      - name: esfera_sk
+        data_tests:
+          - relationships:
+              arguments: { to: ref('dim_esfera_administrativa'), field: esfera_sk }
+              config: { tags: ["bloqueante"] }
+      - name: tipo_museu_sk
+        data_tests:
+          - relationships:
+              arguments: { to: ref('dim_tipo_museu'), field: tipo_museu_sk }
+              config: { tags: ["bloqueante"] }
+      - name: tematica_sk
+        data_tests:
+          - relationships:
+              arguments: { to: ref('dim_tematica'), field: tematica_sk }
+              config: { tags: ["bloqueante"] }
+      - name: museu_sk
+        description: Versão de dim_museu vigente na data do snapshot.
+        data_tests:
+          - not_null:
+              config: { tags: ["bloqueante"] }
+          - relationships:
+              arguments:
+                to: ref('dim_museu')
+                field: museu_sk
+
+  - name: obt_museus
+    description: >
+      One Big Table: estado atual de cada museu, com STRUCTs (localizacao,
+      gestao, equipe, acessibilidade, visitacao) e ARRAYs (tipologias,
+      recursos). Base do agente de IA e de consultas exploratórias.
+    data_tests:
+      - volume_estavel:
+          config: { tags: ["bloqueante"] }
+    columns:
+      - name: museu_id
+        data_tests: [unique, not_null]
+
+unit_tests:
+  - name: scd2_abre_versao_quando_status_muda_e_fecha_quando_some
+    description: >
+      Museu 1: aberto em 01 e 02, fechado em 03 -> duas versões, a primeira
+      vigente de 01 a 02. Museu 2: visto em 01 e 02, ausente em 03 -> uma
+      versão encerrada em 02 e marcada como removida.
+    model: dim_museu
+    overrides:
+      macros:
+        is_incremental: false
+    given:
+      - input: ref('int_museus__enriquecido')
+        rows:
+          - { museu_id: 1, dt: 2026-11-01, nome_museu: "A", status_funcionamento: "Aberto",  municipio_id: 10 }
+          - { museu_id: 1, dt: 2026-11-02, nome_museu: "A", status_funcionamento: "Aberto",  municipio_id: 10 }
+          - { museu_id: 1, dt: 2026-11-03, nome_museu: "A", status_funcionamento: "Fechado", municipio_id: 10 }
+          - { museu_id: 2, dt: 2026-11-01, nome_museu: "B", status_funcionamento: "Aberto",  municipio_id: 20 }
+          - { museu_id: 2, dt: 2026-11-02, nome_museu: "B", status_funcionamento: "Aberto",  municipio_id: 20 }
+    expect:
+      rows:
+        - { museu_id: 1, valido_de: 2026-11-01, valido_ate: 2026-11-02, is_versao_atual: false, is_removido_do_cadastro: false }
+        - { museu_id: 1, valido_de: 2026-11-03, valido_ate: null,       is_versao_atual: true,  is_removido_do_cadastro: false }
+        - { museu_id: 2, valido_de: 2026-11-01, valido_ate: 2026-11-02, is_versao_atual: false, is_removido_do_cadastro: true }
+
+  - name: scd2_incremental_fecha_ancora_abre_versao_e_fecha_removido
+    description: >
+      Estado anterior: museus 1 e 2 com versão aberta desde 01/11, confirmados
+      até 02/11. Chega a partição 03/11 com o museu 1 fechado, o museu 2
+      ausente e um museu 3 novo. Esperado: versão do 1 fecha em 02/11 e abre
+      outra em 03/11; o 2 fecha em 02/11 como removido; o 3 abre em 03/11.
+      A linha de 02/11 do enriquecido já foi processada e tem que ser ignorada.
+    model: dim_museu
+    overrides:
+      macros:
+        is_incremental: true
+    given:
+      - input: ref('int_museus__enriquecido')
+        rows:
+          - { museu_id: 1, dt: 2026-11-02, nome_museu: "A", status_funcionamento: "Aberto",  municipio_id: 10 }
+          - { museu_id: 1, dt: 2026-11-03, nome_museu: "A", status_funcionamento: "Fechado", municipio_id: 10 }
+          - { museu_id: 3, dt: 2026-11-03, nome_museu: "C", status_funcionamento: "Aberto",  municipio_id: 30 }
+      - input: this
+        rows:
+          - { museu_sk: "s1", museu_id: 1, nome_museu: "A", status_funcionamento: "Aberto", municipio_id: 10,
+              valido_de: 2026-11-01, valido_ate: null, is_versao_atual: true, is_removido_do_cadastro: false,
+              ultima_confirmacao: 2026-11-02, hash_atributos: "h1" }
+          - { museu_sk: "s2", museu_id: 2, nome_museu: "B", status_funcionamento: "Aberto", municipio_id: 20,
+              valido_de: 2026-11-01, valido_ate: null, is_versao_atual: true, is_removido_do_cadastro: false,
+              ultima_confirmacao: 2026-11-02, hash_atributos: "h2" }
+    expect:
+      rows:
+        - { museu_id: 1, valido_de: 2026-11-01, valido_ate: 2026-11-02, is_versao_atual: false, is_removido_do_cadastro: false }
+        - { museu_id: 1, valido_de: 2026-11-03, valido_ate: null,       is_versao_atual: true,  is_removido_do_cadastro: false }
+        - { museu_id: 2, valido_de: 2026-11-01, valido_ate: 2026-11-02, is_versao_atual: false, is_removido_do_cadastro: true }
+        - { museu_id: 3, valido_de: 2026-11-03, valido_ate: null,       is_versao_atual: true,  is_removido_do_cadastro: false }

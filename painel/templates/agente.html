@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block titulo %}Pergunte aos dados · Museus do Brasil{% endblock %}
+{% from "_componentes.html" import cabecalho %}
+{% block conteudo %}
+{{ cabecalho('Assistente de dados', 'Pergunte aos dados', status, none, 'Consulta as mesmas tabelas do painel e mostra o SQL que rodou. Só lê.') }}
+
+<section class="conversa" aria-live="polite">
+  <ol id="mensagens" class="mensagens">
+    {% if not agente_ativo %}
+    <li class="msg msg-sistema">O assistente está desligado neste ambiente: falta a variável <code>GEMINI_API_KEY</code>.</li>
+    {% endif %}
+  </ol>
+
+  <div class="sugestoes" id="sugestoes">
+    <button type="button">Quais as 5 UFs com menos museus por habitante?</button>
+    <button type="button">Qual a maior cidade do Nordeste sem nenhum museu ativo?</button>
+    <button type="button">Museus públicos têm mais plano museológico que privados?</button>
+    <button type="button">Quanto do cadastro está sem coordenada, por região?</button>
+  </div>
+
+  <form id="form-pergunta" class="pergunta">
+    <label for="campo" class="visualmente-oculto">Sua pergunta</label>
+    <textarea id="campo" name="pergunta" rows="2" maxlength="1000" required
+              placeholder="Ex.: quantos museus comunitários existem na Bahia?" {% if not agente_ativo %}disabled{% endif %}></textarea>
+    <button type="submit" {% if not agente_ativo %}disabled{% endif %}>Perguntar</button>
+  </form>
+</section>
+{% endblock %}
+
+{% block scripts %}{% endblock %}

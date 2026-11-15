@@ -1,0 +1,61 @@
+version: 2
+
+models:
+  - name: agg_gestao_por_perfil
+    description: Percentual de museus ativos que atende cada critério de gestão, por natureza/perfil/tipo.
+    columns:
+      - name: indice_gestao_medio
+        description: "{{ doc('indice_gestao') }}"
+        data_tests:
+          - no_intervalo:
+              arguments: { minimo: 0, maximo: 100 }
+
+  - name: agg_aberturas_por_decada
+    description: Museus hoje cadastrados, agrupados pela década de abertura, região e natureza.
+
+  - name: agg_recursos_acessibilidade
+    description: >
+      Frequência de cada recurso de acessibilidade por UF e dimensão
+      (física/sensorial). O denominador é o total de museus ativos da UF.
+    data_tests:
+      - unico_por:
+          arguments:
+            colunas: [uf_sigla, dimensao, recurso]
+    columns:
+      - name: pct_museus_com_recurso
+        data_tests:
+          - no_intervalo:
+              arguments: { minimo: 0, maximo: 1 }
+
+  - name: mart_completude_cadastro
+    description: Percentual de preenchimento dos campos-chave do cadastro por UF (formato longo).
+    data_tests:
+      - unico_por:
+          arguments:
+            colunas: [uf_sigla, campo]
+
+  - name: mart_saude_coleta
+    description: >
+      Saúde da coleta: cada partição de cada fonte, válida ou em quarentena, o
+      motivo, e qual partição os números publicados estão usando.
+    data_tests:
+      - unico_por:
+          arguments:
+            colunas: [fonte, dt]
+
+  - name: fct_pontos_memoria
+    description: Pontos de Memória do cadastro do Ibram (foto atual).
+    columns:
+      - name: ponto_memoria_id
+        data_tests: [unique, not_null]
+
+  - name: metricflow_time_spine
+    description: Calendário diário para o dbt Semantic Layer.
+    config:
+      meta:
+        publicar: false
+    time_spine:
+      standard_granularity_column: date_day
+    columns:
+      - name: date_day
+        granularity: day

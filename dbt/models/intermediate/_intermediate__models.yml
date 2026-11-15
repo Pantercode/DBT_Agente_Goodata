@@ -1,0 +1,140 @@
+version: 2
+
+models:
+  - name: int_museus__municipio_resolvido
+    description: Código IBGE do município de cada museu, com o método usado (exato, de_para, nao_resolvido).
+    columns:
+      - name: metodo_resolucao
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [exato, de_para, nao_resolvido]
+      - name: municipio_id
+        description: >
+          Nulo só quando nem o nome nem o de-para resolveram. Este modelo vê
+          todas as partições (inclusive as em quarentena), então aqui só avisa;
+          o bloqueio está em int_museus__enriquecido, depois da quarentena.
+        data_tests:
+          - cobertura_minima:
+              arguments:
+                minimo: 0.99
+              config: { severity: warn }
+
+  - name: int_museus__indicadores
+    description: Índice de gestão e contagens de acessibilidade por museu x partição.
+    columns:
+      - name: indice_gestao
+        description: "{{ doc('indice_gestao') }}"
+        data_tests:
+          - not_null
+          - no_intervalo:
+              arguments:
+                minimo: 0
+                maximo: 100
+              config: { tags: ["bloqueante"] }
+      - name: dimensoes_acessibilidade
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [0, 1, 2, 3]
+                quote: false
+
+  - name: int_museus__enriquecido
+    description: Ponto único de junção (staging + indicadores + município + esfera). Grão museu x partição.
+    data_tests:
+      - unico_por:
+          arguments:
+            colunas: [museu_id, dt]
+          config: { tags: ["bloqueante"] }
+    columns:
+      - name: municipio_id
+        description: Acima de 1% de nulos o build bloqueia; os agregados de cobertura ficariam errados.
+        data_tests:
+          - cobertura_minima:
+              arguments:
+                minimo: 0.99
+              config: { tags: ["bloqueante"] }
+      - name: is_uf_divergente
+        description: UF do cadastro diferente da UF do município no IBGE (a do IBGE prevalece).
+      - name: natureza_administrativa
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["Pública", "Privada", "Mista", "Não informada"]
+
+  - name: int_museus__atual
+    description: Partição mais recente de int_museus__enriquecido.
+
+  - name: int_municipios__com_populacao
+    description: Municípios do IBGE com população do Censo e faixa populacional.
+    columns:
+      - name: populacao
+        data_tests:
+          - cobertura_minima:
+              arguments:
+                minimo: 0.999
+
+  - name: int_pontos_memoria__atual
+    description: Pontos de Memória da partição mais recente, com região.
+
+  - name: int_particoes__validacao
+    description: >
+      Uma linha por fonte x partição: válida ou em quarentena, com o motivo.
+      Partição em quarentena não entra nos marts. Ver docs/decisoes/009.
+    data_tests:
+      - unico_por:
+          arguments:
+            colunas: [fonte, dt]
+          config: { tags: ["bloqueante"] }
+    columns:
+      - name: status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [valida, quarentena]
+      - name: motivo_quarentena
+        description: Texto legível com cada regra que falhou. Nulo quando a partição é válida.
+
+  - name: int_museus__registros_quarentena
+    description: Registros da partição em uso que ficaram fora dos marts por valor impossível (sem nome, sem status, UF inválida).
+
+unit_tests:
+  - name: indice_gestao_soma_pesos_dos_criterios_atendidos
+    description: >
+      Plano museológico (30) + regimento (20) + equipe própria (10) = 60.
+      Critério sem resposta conta como não atendido, mas não entra em
+      criterios_respondidos.
+    model: int_museus__indicadores
+    given:
+      - input: ref('stg_tainacan__museus')
+        rows:
+          - museu_id: 1
+            dt: 2026-11-14
+            possui_plano_museologico: true
+            possui_regimento_interno: true
+            possui_politica_aquisicao: false
+            possui_politica_descarte: null
+            qtd_pessoas_trabalham: 3
+            instrumentos_documentacao: "['- NÃO POSSUI -']"
+            recursos_acessibilidade_fisica: "['Rampa de acesso', '- NÃO POSSUI -']"
+            recursos_acessibilidade_sensorial: "[]"
+            recursos_turista_estrangeiro: "['- NÃO POSSUI -']"
+      # Pesos fixos no teste: sem isso o unit test lê o seed do warehouse e
+      # passa a depender de estado (descoberto quando um seed quebrado ficou
+      # carregado após o circuit breaker barrar a publicação).
+      - input: ref('pesos_indice_gestao')
+        rows:
+          - { criterio: plano_museologico, peso: 30 }
+          - { criterio: regimento_interno, peso: 20 }
+          - { criterio: documentacao_acervo, peso: 15 }
+          - { criterio: politica_aquisicao, peso: 15 }
+          - { criterio: politica_descarte, peso: 10 }
+          - { criterio: equipe_propria, peso: 10 }
+    expect:
+      rows:
+        - museu_id: 1
+          indice_gestao: 60
+          criterios_respondidos: 5
+          atende_documentacao_acervo: false
+          qtd_recursos_acess_fisica: 1
+          dimensoes_acessibilidade: 1

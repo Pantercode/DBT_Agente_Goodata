@@ -1,0 +1,110 @@
+{
+  "analytics": {
+    "metrics": [
+      {
+        "id": "museus_ativos",
+        "title": "Museus ativos",
+        "content": {
+          "format": "#,##0",
+          "maql": "SELECT SUM({fact/museu.is_aberto})"
+        },
+        "tags": [
+          "core"
+        ]
+      },
+      {
+        "id": "museus_cadastrados",
+        "title": "Museus cadastrados",
+        "content": {
+          "format": "#,##0",
+          "maql": "SELECT COUNT({attribute/museu.museu_id})"
+        },
+        "tags": [
+          "core"
+        ]
+      },
+      {
+        "id": "populacao",
+        "title": "População (Censo 2022)",
+        "content": {
+          "format": "#,##0",
+          "maql": "SELECT SUM({fact/municipio.populacao})"
+        },
+        "tags": []
+      },
+      {
+        "id": "museus_por_100k_hab",
+        "title": "Museus ativos por 100 mil habitantes",
+        "content": {
+          "format": "#,##0.00",
+          "maql": "SELECT {metric/museus_ativos} * 100000 / {metric/populacao}"
+        },
+        "tags": [
+          "core"
+        ]
+      },
+      {
+        "id": "pct_municipios_com_museu",
+        "title": "% de municípios com museu ativo",
+        "content": {
+          "format": "#,##0.0%",
+          "maql": "SELECT SUM({fact/municipio.tem_museu_ativo}) / COUNT({attribute/municipio.municipio_id})"
+        },
+        "tags": [
+          "core"
+        ]
+      },
+      {
+        "id": "populacao_sem_museu",
+        "title": "População em municípios sem museu",
+        "content": {
+          "format": "#,##0",
+          "maql": "SELECT SUM({fact/municipio.populacao_sem_museu})"
+        },
+        "tags": []
+      },
+      {
+        "id": "pct_populacao_sem_museu",
+        "title": "% da população em município sem museu",
+        "content": {
+          "format": "#,##0.0%",
+          "maql": "SELECT {metric/populacao_sem_museu} / {metric/populacao}"
+        },
+        "tags": [
+          "core"
+        ]
+      },
+      {
+        "id": "indice_gestao_medio",
+        "title": "Índice de gestão médio (museus ativos)",
+        "content": {
+          "format": "#,##0.0",
+          "maql": "SELECT SUM({fact/museu.indice_gestao_se_ativo}) / {metric/museus_ativos}"
+        },
+        "tags": [
+          "core"
+        ]
+      },
+      {
+        "id": "pct_plano_museologico",
+        "title": "% com plano museológico (entre quem respondeu)",
+        "content": {
+          "format": "#,##0.0%",
+          "maql": "SELECT SUM({fact/museu.possui_plano_museologico}) / SUM({fact/museu.respondeu_plano_museologico}) WHERE {label/museu.status_funcionamento} = \"Aberto\""
+        },
+        "tags": []
+      },
+      {
+        "id": "pct_museus_sem_acessibilidade",
+        "title": "% de museus ativos sem nenhum recurso de acessibilidade",
+        "content": {
+          "format": "#,##0.0%",
+          "maql": "SELECT SUM({fact/museu.sem_acessibilidade}) / {metric/museus_ativos} WHERE {label/museu.status_funcionamento} = \"Aberto\""
+        },
+        "tags": [
+          "core"
+        ]
+      }
+    ]
+  }
+}

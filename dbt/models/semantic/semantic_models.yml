@@ -1,0 +1,124 @@
+version: 2
+
+# dbt Semantic Layer (MetricFlow).
+#
+# Mesmas definições que estão em docs/metricas.md e no modelo do GoodData
+# (gooddata/metricas.yaml). Quem muda uma métrica muda nos três; o teste
+# tests/test_metricas_consistentes.py no repositório compara os nomes.
+
+semantic_models:
+  - name: museus_diario
+    description: Snapshot diário de museus.
+    model: ref('fct_museus_diario')
+    defaults:
+      agg_time_dimension: dt
+    entities:
+      - name: museu
+        type: foreign
+        expr: museu_sk
+      - name: museu_dia
+        type: primary
+        expr: "museu_id || '-' || cast(dt as varchar)"
+      - name: municipio
+        type: foreign
+        expr: municipio_id
+    dimensions:
+      - name: dt
+        type: time
+        type_params:
+          time_granularity: day
+      - name: uf_sigla
+        type: categorical
+      - name: is_aberto
+        type: categorical
+    measures:
+      - name: museus_cadastrados
+        agg: sum
+        expr: qtd_museus
+      - name: museus_ativos
+        agg: sum
+        expr: "case when is_aberto then 1 else 0 end"
+      - name: soma_indice_gestao_ativos
+        agg: sum
+        expr: "case when is_aberto then indice_gestao else 0 end"
+      - name: museus_sem_acessibilidade
+        agg: sum
+        expr: "case when is_aberto and dimensoes_acessibilidade = 0 then 1 else 0 end"
+
+  - name: museus
+    description: Versões de museus (SCD2).
+    model: ref('dim_museu')
+    defaults:
+      agg_time_dimension: valido_de
+    entities:
+      - name: museu
+        type: primary
+        expr: museu_sk
+    dimensions:
+      - name: valido_de
+        type: time
+        type_params:
+          time_granularity: day
+      - name: tipo_museu
+        type: categorical
+      - name: natureza_administrativa
+        type: categorical
+      - name: faixa_gestao
+        type: categorical
+      - name: regiao_sigla
+        type: categorical
+
+  - name: municipios
+    description: Municípios com população (denominador per capita).
+    model: ref('dim_municipio')
+    entities:
+      - name: municipio
+        type: primary
+        expr: municipio_id
+    dimensions:
+      - name: regiao_sigla
+        type: categorical
+      - name: faixa_populacional
+        type: categorical
+
+metrics:
+  - name: museus_ativos
+    label: Museus ativos
+    description: Museus com status "Aberto".
+    type: simple
+    type_params:
+      measure: museus_ativos
+
+  - name: museus_cadastrados
+    label: Museus cadastrados
+    type: simple
+    type_params:
+      measure: museus_cadastrados
+
+  # Numeradores das razões abaixo (MetricFlow exige métrica, não measure, no ratio).
+  - name: soma_indice_gestao_ativos
+    label: Soma do índice de gestão (museus ativos)
+    type: simple
+    type_params:
+      measure: soma_indice_gestao_ativos
+
+  - name: museus_sem_acessibilidade
+    label: Museus ativos sem acessibilidade
+    type: simple
+    type_params:
+      measure: museus_sem_acessibilidade
+
+  - name: indice_gestao_medio
+    label: Índice de gestão médio (museus ativos)
+    description: Média do índice de gestão (0-100) entre museus ativos.
+    type: ratio
+    type_params:
+      numerator: { name: soma_indice_gestao_ativos }
+      denominator: museus_ativos
+
+  - name: pct_museus_sem_acessibilidade
+    label: "% de museus ativos sem nenhum recurso de acessibilidade"
+    type: ratio
+    type_params:
+      numerator: { name: museus_sem_acessibilidade }
+      denominator: museus_ativos

@@ -1,0 +1,12 @@
+esfera_administrativa,natureza,nivel_governo,subtipo_privado
+PÚBLICA – Municipal,Pública,Municipal,
+PÚBLICA – Estadual/Distrital,Pública,Estadual/Distrital,
+PÚBLICA – Federal,Pública,Federal,
+PRIVADA – Associação,Privada,,Associação
+PRIVADA – Fundação,Privada,,Fundação
+PRIVADA – Organização Religiosa,Privada,,Organização religiosa
+PRIVADA – Empresa,Privada,,Empresa
+PRIVADA – Entidade Sindical,Privada,,Entidade sindical
+PRIVADA – Não informada,Privada,,Não informado
+PARTICULAR,Privada,,Pessoa física
+MISTA,Mista,,

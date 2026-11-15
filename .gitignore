@@ -1,0 +1,21 @@
+# ambiente
+.venv/
+__pycache__/
+*.pyc
+.env
+.vercel/
+
+# dbt
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+logs/
+
+# dados: o lake e o warehouse são reconstruíveis pelo pipeline.
+# data/serving é versionado de propósito: é o que a Vercel publica.
+data/lake/
+data/warehouse/
+
+# ferramentas
+.ruff_cache/
+.pytest_cache/

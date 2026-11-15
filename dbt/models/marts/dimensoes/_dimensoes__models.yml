@@ -1,0 +1,67 @@
+version: 2
+
+models:
+  - name: dim_data
+    description: Calendário diário com rótulos em português. Role-playing para dt do snapshot, vigência e cadastro.
+    columns:
+      - name: data
+        data_tests: [unique, not_null]
+      - name: data_sk
+        description: AAAAMMDD inteiro (chave do fato).
+        data_tests: [unique, not_null]
+
+  - name: dim_uf
+    description: As 27 UFs com região e população do Censo.
+    columns:
+      - name: uf_sigla
+        data_tests: [unique, not_null]
+
+  - name: dim_esfera_administrativa
+    description: Esfera administrativa do cadastro classificada em natureza, nível de governo e subtipo privado.
+    columns:
+      - name: esfera_sk
+        data_tests: [unique, not_null]
+      - name: esfera_administrativa
+        data_tests: [unique]
+
+  - name: dim_tipo_museu
+    description: Tipo de museu (taxonomia do Ibram), com marcadores de museu virtual e de acervo vivo.
+    columns:
+      - name: tipo_museu_sk
+        data_tests: [unique, not_null]
+
+  - name: dim_tematica
+    description: Temática principal do museu.
+    columns:
+      - name: tematica_sk
+        data_tests: [unique, not_null]
+
+  - name: dim_tipologia_acervo
+    description: Tipologias de acervo. Ligada ao museu pela bridge_museu_tipologia (muitos para muitos).
+    columns:
+      - name: tipologia_sk
+        data_tests: [unique, not_null]
+
+  - name: bridge_museu_tipologia
+    description: >
+      Ponte museu x tipologia (foto atual). Some `peso` para alocar cada museu
+      uma vez só entre as tipologias; conte linhas para "museus que têm acervo de X".
+    data_tests:
+      - unico_por:
+          arguments:
+            colunas: [museu_id, tipologia_sk]
+      - soma_igual_a_contagem:
+          arguments:
+            coluna: peso
+            chave: museu_id
+    columns:
+      - name: tipologia_sk
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_tipologia_acervo')
+                field: tipologia_sk
+      - name: peso
+        data_tests:
+          - no_intervalo:
+              arguments: { minimo: 0, maximo: 1 }

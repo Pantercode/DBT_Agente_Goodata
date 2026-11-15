@@ -1,0 +1,83 @@
+version: 2
+
+models:
+  - name: agg_cobertura_brasil
+    description: Números nacionais (uma linha), recalculados do grão município. Fonte dos indicadores de capa.
+    config:
+      contract: { enforced: true }
+      meta:
+        dono: analytics-engineering
+        consumidores: [painel, gooddata, agente]
+    data_tests:
+      - volume_estavel:
+          arguments:
+            tolerancia: 0
+          config: { tags: ["bloqueante"] }
+    columns:
+      - { name: dt_referencia, data_type: date }
+      - { name: qtd_museus_cadastrados, data_type: bigint }
+      - name: qtd_museus_ativos
+        data_type: bigint
+        description: "{{ doc('museu_ativo') }}"
+        data_tests:
+          - no_intervalo:
+              arguments:
+                # Queda abaixo disso é extração quebrada, não fechamento de museus.
+                minimo: "{{ var('minimo_museus_ativos') }}"
+              config: { tags: ["bloqueante"] }
+      - { name: qtd_museus_fechados, data_type: bigint }
+      - { name: qtd_pontos_memoria, data_type: bigint }
+      - { name: populacao, data_type: hugeint }
+      - { name: qtd_municipios, data_type: bigint }
+      - { name: qtd_municipios_com_museu, data_type: bigint }
+      - { name: pct_municipios_com_museu, data_type: double }
+      - { name: populacao_sem_museu, data_type: hugeint }
+      - { name: pct_populacao_sem_museu, data_type: double }
+      - name: museus_por_100k_hab
+        data_type: double
+        description: "{{ doc('museus_por_100k') }}"
+      - { name: indice_gestao_medio, data_type: double }
+      - { name: pct_plano_museologico, data_type: double }
+      - { name: pct_sem_acessibilidade, data_type: double }
+
+  - name: agg_cobertura_uf
+    description: Síntese por UF (27 linhas). Razões já calculadas; não some razões entre UFs.
+    config:
+      meta:
+        consumidores: [painel, gooddata, agente]
+    data_tests:
+      - volume_estavel:
+          arguments:
+            tolerancia: 0
+          config: { tags: ["bloqueante"] }
+    columns:
+      - name: uf_sigla
+        data_tests: [unique, not_null]
+      - name: museus_por_100k_hab
+        description: "{{ doc('museus_por_100k') }}"
+        data_tests: [not_null]
+      - name: pct_municipios_com_museu
+        data_tests:
+          - no_intervalo:
+              arguments:
+                minimo: 0
+                maximo: 1
+
+  - name: agg_cobertura_municipio
+    description: Um registro por município (todos os 5.571), com museus ativos, densidade e classe de cobertura.
+    config:
+      meta:
+        consumidores: [painel, gooddata, agente]
+    data_tests:
+      - volume_estavel:
+          config: { tags: ["bloqueante"] }
+    columns:
+      - name: municipio_id
+        data_tests: [unique, not_null]
+      - name: qtd_museus_ativos
+        description: "{{ doc('museu_ativo') }}"
+      - name: classe_cobertura
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["Sem museu ativo", "1 museu", "2 a 5 museus", "Mais de 5 museus"]

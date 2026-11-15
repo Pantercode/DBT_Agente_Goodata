@@ -1,0 +1,65 @@
+{
+  "iniciado_em": "2026-11-15T09:56:05+00:00",
+  "finalizado_em": "2026-11-15T09:57:19+00:00",
+  "status": "sucesso_com_quarentena",
+  "publicou": true,
+  "etapas": [
+    {
+      "nome": "freshness",
+      "status": "ok",
+      "duracao_s": 16.7,
+      "detalhe": "4 fontes checadas, 0 em aviso"
+    },
+    {
+      "nome": "build (write + audit)",
+      "status": "ok",
+      "duracao_s": 27.5,
+      "detalhe": "154/159 nós ok, 2 aviso(s), 1 partição(ões) em quarentena"
+    },
+    {
+      "nome": "publish",
+      "status": "ok",
+      "duracao_s": 13.1,
+      "detalhe": "auditoria -> publicado"
+    },
+    {
+      "nome": "docs",
+      "status": "ok",
+      "duracao_s": 16.4,
+      "detalhe": "manifest + catalog"
+    },
+    {
+      "nome": "serving",
+      "status": "ok",
+      "duracao_s": 0.4,
+      "detalhe": "24 arquivos em data/serving"
+    }
+  ],
+  "bloqueios": [],
+  "avisos": [
+    {
+      "no": "test.museus_br.not_null_stg_tainacan__museus_uf_sigla.9841a6ded4",
+      "status": "warn",
+      "falhas": 300
+    },
+    {
+      "no": "test.museus_br.cobertura_minima_int_museus__municipio_resolvido_municipio_id__0_99.a9a6f49726",
+      "status": "warn",
+      "falhas": 1
+    }
+  ],
+  "quarentena": [
+    {
+      "fonte": "museus",
+      "dt": "2026-11-15",
+      "motivo": "volume 2079 fora da faixa (régua 4159); campos obrigatórios vazios (sem UF 14.4%)",
+      "dt_em_uso": "2026-11-14"
+    }
+  ],
+  "linhas_processadas": {
+    "int_particoes__validacao": null,
+    "int_museus__enriquecido": null,
+    "dim_museu": null,
+    "fct_museus_diario": null
+  }
+}

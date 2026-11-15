@@ -1,0 +1,84 @@
+version: 2
+
+models:
+  - name: stg_tainacan__museus
+    description: >
+      Um registro por museu por partição de extração. Campos do formulário do
+      Ibram tipados; sentinelas "- NÃO INFORMADO -" viram null; listas
+      multivaloradas ficam como ARRAY.
+      Vê todas as partições, inclusive as que vão para quarentena, por isso os
+      testes aqui só avisam: quem barra dado ruim é int_particoes__validacao,
+      e os testes bloqueantes ficam depois dela.
+    data_tests:
+      - unico_por:
+          arguments:
+            colunas: [museu_id, dt]
+          config: { severity: warn }
+      - reconcilia_com_manifest:
+          arguments:
+            fonte: tainacan
+            entidade: museus
+          config: { severity: warn }
+    columns:
+      - name: museu_id
+        description: ID do item no Tainacan (chave natural).
+        data_tests:
+          - not_null:
+              config: { severity: warn }
+      - name: nome_museu
+        data_tests:
+          - not_null:
+              config: { severity: warn }
+      - name: uf_sigla
+        description: UF como informada no cadastro. Pode divergir do IBGE; ver int_museus__enriquecido.
+        data_tests:
+          - not_null:
+              config: { severity: warn }
+          - accepted_values:
+              arguments:
+                values: [AC, AL, AP, AM, BA, CE, DF, ES, GO, MA, MT, MS, MG, PA, PB, PR, PE, PI, RJ, RN, RS, RO, RR, SC, SP, SE, TO]
+              config: { severity: warn }
+      - name: status_funcionamento
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["Aberto", "Fechado", "Em implantação"]
+              config: { severity: warn }
+      - name: latitude
+        description: Latitude WGS84, só quando o par cai dentro do retângulo do Brasil.
+        data_tests:
+          - cobertura_minima:
+              arguments:
+                minimo: 0.90
+              config: { severity: warn }
+      - name: ano_abertura
+        data_tests:
+          - no_intervalo:
+              arguments:
+                minimo: 1500
+                maximo: 2100
+      - name: dt
+        description: "{{ doc('dt') }}"
+        data_tests: [not_null]
+
+  - name: stg_tainacan__pontos_memoria
+    description: Um registro por Ponto de Memória por partição.
+    data_tests:
+      - unico_por:
+          arguments:
+            colunas: [ponto_memoria_id, dt]
+          config: { severity: warn }
+      - reconcilia_com_manifest:
+          arguments:
+            fonte: tainacan
+            entidade: pontos_memoria
+          config: { severity: warn }
+    columns:
+      - name: ponto_memoria_id
+        data_tests: [not_null]
+      - name: uf_sigla
+        data_tests:
+          - cobertura_minima:
+              arguments:
+                minimo: 0.98
+              config: { severity: warn }

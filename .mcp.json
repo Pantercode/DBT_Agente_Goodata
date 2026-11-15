@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "gooddata": {
+      "type": "http",
+      "url": "${GOODDATA_HOST}/api/v1/actions/workspaces/${GOODDATA_WORKSPACE:-museus_br}/ai/mcp",
+      "headers": {
+        "Authorization": "Bearer ${GOODDATA_TOKEN}"
+      }
+    }
+  }
+}

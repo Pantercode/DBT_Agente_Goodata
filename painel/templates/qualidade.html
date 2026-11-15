@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% from "_componentes.html" import cartao, cabecalho with context %}
+{% block titulo %}Qualidade dos dados · Museus do Brasil{% endblock %}
+{% block conteudo %}
+{{ cabecalho('Qualidade dos dados', 'Dá para confiar nesses números?', status, none, 'Cada publicação passa por ' ~ (testes | length) ~ ' testes. Se um bloqueante falha, o painel fica na última versão aprovada.') }}
+
+<section class="painel-bloco" aria-labelledby="t-coleta">
+  <header class="bloco-cabecalho">
+    <h2 id="t-coleta">Saúde da coleta</h2>
+    <span class="bloco-meta">Cada dia de coleta é validado antes de entrar. O que falha fica em quarentena e o painel segue com o último dia coerente.</span>
+  </header>
+  <ol class="coletas">
+    {% for c in coleta %}
+    <li class="coleta coleta-{{ c.status }}">
+      <div class="coleta-data"><span>{{ c.dt.strftime('%d/%m') }}</span><small>{{ 'museus' if c.fonte == 'museus' else 'pontos de memória' }}</small></div>
+      <div class="coleta-corpo">
+        <p class="coleta-titulo">
+          <span class="selo selo-{{ 'bom' if c.status == 'valida' else 'critico' }}">{{ 'Válida' if c.status == 'valida' else 'Quarentena' }}</span>
+          {% if c.is_particao_em_uso %}<span class="selo">Em uso no painel</span>{% endif %}
+        </p>
+        <p class="coleta-texto">{{ c.registros_lidos | br }} registros{% if c.regua_volume %} · régua {{ c.regua_volume | br }}{% endif %} · {{ c.pct_sem_uf | pct }} sem UF</p>
+        {% if c.motivo_quarentena %}<p class="coleta-motivo">{{ c.motivo_quarentena | frase }}</p>{% endif %}
+      </div>
+    </li>
+    {% endfor %}
+  </ol>
+</section>
+
+<section class="cartao cartao-inteira" aria-labelledby="t-pipeline">
+  <header><h2 id="t-pipeline">Última execução do pipeline</h2>
+    <p class="nota">Iniciada em {{ status.iniciado_em or '–' }} (UTC).</p></header>
+  <ol class="etapas">
+    {% for e in status.etapas or [] %}
+    <li class="etapa etapa-{{ 'bom' if e.status == 'ok' else 'critico' }}">
+      <span class="etapa-nome">{{ e.nome }}</span>
+      <span class="etapa-status">{{ 'ok' if e.status == 'ok' else e.status }}</span>
+      <span class="etapa-detalhe">{{ e.detalhe }}</span>
+      <span class="etapa-tempo">{{ e.duracao_s | br(1) }} s</span>
+    </li>
+    {% endfor %}
+  </ol>
+</section>
+
+<div class="grade">
+  {% for gr in graficos %}{{ cartao(gr) }}{% endfor %}
+
+  <section class="cartao cartao-inteira" aria-labelledby="t-testes">
+    <header><h2 id="t-testes">Testes da última execução</h2>
+      <p class="nota">Bloqueantes primeiro. Um bloqueante reprovado impede o publish.</p></header>
+    <div class="rolagem rolagem-alta">
+      <table>
+        <thead><tr><th scope="col">Teste</th><th scope="col">Alvo</th><th scope="col">Bloqueia?</th><th scope="col">Resultado</th><th scope="col">Linhas com falha</th></tr></thead>
+        <tbody>
+        {% for t in testes %}
+          <tr>
+            <td><code>{{ t.nome }}</code></td>
+            <td>{{ (t.modelo_alvo or '').split('.')[-1] }}</td>
+            <td>{{ 'Sim' if t.bloqueante else 'Não' }}</td>
+            <td><span class="selo selo-{{ 'bom' if t.status == 'pass' else ('atencao' if t.status == 'warn' else 'critico') }}">
+              {{ {'pass': 'Aprovado', 'warn': 'Aviso', 'fail': 'Reprovado', 'error': 'Erro'}.get(t.status, t.status) }}</span></td>
+            <td>{{ t.falhas if t.falhas is not none else '–' }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}

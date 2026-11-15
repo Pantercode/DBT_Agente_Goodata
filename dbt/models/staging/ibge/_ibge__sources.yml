@@ -1,0 +1,26 @@
+version: 2
+
+sources:
+  - name: ibge
+    description: Referências territoriais e demográficas do IBGE.
+    schema: raw
+    meta:
+      dono: analytics-engineering
+    loaded_at_field: _extraido_em
+    freshness:
+      # Dado de referência: muda no máximo uma vez por ano.
+      warn_after: { count: 45, period: day }
+
+    tables:
+      - name: municipios
+        description: API de Localidades. Municípios com hierarquia (micro, meso, UF, região).
+        columns:
+          - name: municipio_id
+            description: Código IBGE de 7 dígitos.
+            data_tests: [not_null]
+
+      - name: populacao
+        description: SIDRA tabela 4709, população residente no Censo 2022.
+        columns:
+          - name: municipio_id
+            data_tests: [not_null]

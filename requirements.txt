@@ -1,0 +1,9 @@
+# Dependências de runtime do painel + agente (é o que a Vercel instala).
+# Pipeline, dbt e GoodData ficam em requirements-dev.txt.
+fastapi==0.163.0
+jinja2==3.1.6
+plotly==7.1.0
+duckdb==2.0.0
+google-genai==3.3.0
+sqlglot==30.31.0
+python-dotenv==1.2.4

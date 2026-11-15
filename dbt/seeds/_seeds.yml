@@ -1,0 +1,53 @@
+version: 2
+
+seeds:
+  - name: pesos_indice_gestao
+    description: >
+      Pesos do índice de gestão museológica (0-100). Editável pela área de
+      negócio; a mudança aparece no próximo build e o histórico fica no git.
+    config:
+      column_types: { criterio: varchar, peso: integer, justificativa: varchar }
+    data_tests:
+      - soma_igual_a:
+          arguments:
+            coluna: peso
+            valor: 100
+          config: { tags: ["bloqueante"] }
+    columns:
+      - name: criterio
+        data_tests:
+          - unique
+          - accepted_values:
+              arguments:
+                values: [plano_museologico, regimento_interno, documentacao_acervo,
+                         politica_aquisicao, politica_descarte, equipe_propria]
+
+  - name: classificacao_esfera
+    description: Agrupa a esfera administrativa do cadastro em natureza (pública/privada/mista) e nível de governo.
+    config:
+      column_types: { esfera_administrativa: varchar, natureza: varchar, nivel_governo: varchar, subtipo_privado: varchar }
+    columns:
+      - name: esfera_administrativa
+        data_tests: [unique, not_null]
+      - name: natureza
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["Pública", "Privada", "Mista"]
+
+  - name: de_para_municipios
+    description: >
+      Correções manuais de nome de município que não batem com o IBGE
+      (grafia antiga, abreviação, erro de digitação). Uma linha por variação.
+      Toda linha nova precisa de `motivo`.
+    config:
+      column_types: { uf_sigla: varchar, nome_no_cadastro: varchar, municipio_id: integer, motivo: varchar }
+    columns:
+      - name: municipio_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('stg_ibge__municipios')
+                field: municipio_id
+      - name: motivo
+        data_tests: [not_null]

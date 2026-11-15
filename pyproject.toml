@@ -1,0 +1,22 @@
+[project]
+name = "museus-br"
+version = "1.0.0"
+description = "Analytics engineering sobre o Cadastro Nacional de Museus: lake, dbt (WAP), painel, agente e GoodData."
+requires-python = ">=3.12,<3.14"
+readme = "README.md"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["dbt", "data"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+ignore = [
+    "RUF001", "RUF002", "RUF003",  # acentos e travessões em strings e comentários são intencionais
+    "E501",                        # o formatter cuida do código; texto longo em string (prompt, hovertemplate) fica inteiro
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

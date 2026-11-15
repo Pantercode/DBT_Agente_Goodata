@@ -1,0 +1,59 @@
+version: 2
+
+exposures:
+  - name: painel_museus_python
+    label: Painel Museus do Brasil (Python / Vercel)
+    type: dashboard
+    maturity: high
+    url: https://museus-br.vercel.app
+    description: >
+      Painel em FastAPI + Plotly. Lê os marts publicados exportados para
+      Parquet (data/serving), atualizado pelo pipeline diário.
+    depends_on:
+      - ref('agg_cobertura_brasil')
+      - ref('agg_cobertura_uf')
+      - ref('agg_cobertura_municipio')
+      - ref('agg_gestao_por_perfil')
+      - ref('agg_recursos_acessibilidade')
+      - ref('agg_aberturas_por_decada')
+      - ref('mart_completude_cadastro')
+      - ref('obt_museus')
+      - ref('fct_pontos_memoria')
+    owner:
+      name: Analytics Engineering
+      email: marcelloliveirafull@gmail.com
+
+  - name: gooddata_museus
+    label: Workspace GoodData "Museus do Brasil"
+    type: dashboard
+    maturity: medium
+    description: >
+      Modelo lógico + métricas MAQL + dashboard no GoodData Cloud, criados por
+      código (gooddata/) a partir das tabelas de `publicado`.
+    depends_on:
+      - ref('dim_municipio')
+      - ref('dim_museu')
+      - ref('fct_museus_diario')
+      - ref('agg_cobertura_uf')
+      - ref('agg_cobertura_municipio')
+    owner:
+      name: Analytics Engineering
+      email: marcelloliveirafull@gmail.com
+
+  - name: agente_ia_museus
+    label: Agente analítico (Gemini)
+    type: application
+    maturity: medium
+    description: >
+      Agente com function calling que responde perguntas em linguagem natural
+      consultando só `publicado` (SQL validado por AST, somente leitura).
+    depends_on:
+      - ref('obt_museus')
+      - ref('agg_cobertura_brasil')
+      - ref('agg_cobertura_uf')
+      - ref('agg_cobertura_municipio')
+      - ref('agg_gestao_por_perfil')
+      - ref('agg_recursos_acessibilidade')
+    owner:
+      name: Analytics Engineering
+      email: marcelloliveirafull@gmail.com

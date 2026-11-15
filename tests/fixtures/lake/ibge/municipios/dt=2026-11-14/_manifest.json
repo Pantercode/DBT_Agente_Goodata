@@ -1,0 +1,11 @@
+{
+  "fonte": "ibge",
+  "entidade": "municipios",
+  "dt": "2026-11-14",
+  "extraido_em": "2026-11-15T09:59:59+00:00",
+  "registros": 5571,
+  "total_informado_pela_origem": null,
+  "sha256": "7548d3e535475d9c4b2e5fc2d6c012fd333c5b25f68f36e5e1c3f7b47800278f",
+  "duracao_s": 0.0,
+  "parametros": {}
+}

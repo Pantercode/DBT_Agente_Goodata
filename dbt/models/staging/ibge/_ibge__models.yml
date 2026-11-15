@@ -1,0 +1,36 @@
+version: 2
+
+models:
+  - name: stg_ibge__municipios
+    description: Municípios do IBGE (partição mais recente), com chave normalizada para junção por nome.
+    data_tests:
+      - unico_por:
+          arguments:
+            colunas: [uf_sigla, municipio_chave]
+          config: { severity: warn }
+    columns:
+      - name: municipio_id
+        data_tests: [unique, not_null]
+      - name: uf_sigla
+        data_tests: [not_null]
+      - name: municipio_chave
+        description: Nome sem acento, minúsculo, só letras. Usado para casar com o texto livre do cadastro.
+
+  - name: stg_ibge__populacao
+    description: População residente por município no Censo de referência (var ano_populacao).
+    columns:
+      - name: municipio_id
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_ibge__municipios')
+                field: municipio_id
+      - name: populacao
+        data_tests:
+          - not_null
+          - no_intervalo:
+              arguments:
+                minimo: 500
+                maximo: 15000000

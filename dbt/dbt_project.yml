@@ -1,0 +1,76 @@
+name: museus_br
+version: "1.0.0"
+config-version: 2
+profile: museus_br
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+flags:
+  require_explicit_package_overrides_for_builtin_materializations: true
+  # O freshness precisa do on-run-start para enxergar as tabelas do schema raw.
+  source_freshness_run_project_hooks: true
+
+vars:
+  # Raiz do landing zone (relativa a esta pasta). No CI aponta para tests/fixtures/lake.
+  caminho_lake: "../data/lake/raw"
+  # Reprocessa as N últimas partições em cada execução incremental. Cobre
+  # correções retroativas na origem sem precisar de full-refresh.
+  janela_reprocessamento_dias: 3
+  # Variação máxima de volume (contagem de linhas) aceita entre publicações.
+  tolerancia_volume: 0.10
+  # Ano usado como referência de população (Censo).
+  ano_populacao: 2022
+  # Piso de sanidade do total nacional. No CI, com a amostra do lake, cai para 10.
+  minimo_museus_ativos: 1000
+  # Pisos por partição (validação de coleta). No CI caem para a escala da amostra.
+  minimo_museus_particao: 1000
+  minimo_pontos_particao: 50
+  # Backfill pontual sem full-refresh: dbt build --vars '{reprocessar_desde: 2026-11-01}'
+  reprocessar_desde: null
+
+models:
+  museus_br:
+    +on_schema_change: append_new_columns
+    staging:
+      +materialized: view
+      +schema: staging
+      +tags: ["staging"]
+    intermediate:
+      +materialized: view
+      +schema: intermediate
+      +tags: ["intermediate"]
+    marts:
+      # Write-Audit-Publish: todo mart é escrito em `auditoria`. Só depois dos
+      # testes passarem a macro publicar_marts copia para `publicado`, que é o
+      # único schema que painel, agente e GoodData leem.
+      +materialized: table
+      +schema: auditoria
+      +tags: ["mart"]
+      +meta:
+        publicar: true
+    utilitarios:
+      +materialized: table
+      +schema: intermediate
+
+seeds:
+  museus_br:
+    +schema: referencia
+    +tags: ["referencia"]
+
+data_tests:
+  museus_br:
+    +store_failures: true
+    +schema: observabilidade_falhas
+
+on-run-start:
+  - "{{ criar_tabelas_externas() }}"
+  - "{{ criar_tabelas_observabilidade() }}"
+
+on-run-end:
+  - "{{ registrar_resultados(results) }}"

@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% from "_componentes.html" import cartao, cabecalho, perguntar_sobre with context %}
+{% block conteudo %}
+
+{{ cabecalho('Panorama do cadastro', 'Onde há museu no Brasil' if filtro.rotulo == 'Brasil' else 'Museus em ' ~ filtro.rotulo, status, k) }}
+
+<div class="faixa">
+  <div class="data-chip" aria-label="Data do cadastro">
+    <span class="data-dia">{{ k.dt_referencia.strftime('%d') }}</span>
+    <span class="data-mes">{{ ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][k.dt_referencia.month - 1] }}</span>
+  </div>
+  <p class="faixa-texto">Municípios com museu <strong>{{ k.qtd_municipios_com_museu | br }}/{{ k.qtd_municipios | br }}</strong> <span>com museu ativo</span></p>
+  <nav class="setas" aria-label="Navegar entre regiões">
+    <a class="botao-icone" href="{{ vizinhos.anterior }}" aria-label="Recorte anterior (seta esquerda)" data-recorte-anterior>
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M15 5 8 12l7 7M8 12h12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </a>
+    <a class="botao-icone" href="{{ vizinhos.proximo }}" aria-label="Próximo recorte (seta direita)" data-recorte-proximo>
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="m9 5 7 7-7 7M16 12H4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </a>
+  </nav>
+</div>
+
+<section class="destaques" aria-label="Indicadores principais">
+  <article class="destaque destaque-luz">
+    <h2>Museus ativos</h2>
+    <span class="destaque-selo" title="Dados auditados">Auditado</span>
+    <p class="destaque-numero" data-contar="{{ k.qtd_museus_ativos }}">{{ k.qtd_museus_ativos | br }}</p>
+    <p class="destaque-rodape">{{ k.museus_por_100k_hab | br(2) }} por 100 mil habitantes</p>
+  </article>
+
+  <article class="destaque destaque-ambar">
+    <h2>Moram em cidade sem museu</h2>
+    <p class="destaque-numero" data-contar="{{ (k.pct_populacao_sem_museu * 100) | round(0) }}" data-sufixo="%">{{ k.pct_populacao_sem_museu | pct(0) }}</p>
+    <p class="destaque-rodape">{{ (k.populacao_sem_museu / 1000000) | br(1) }} milhões de pessoas</p>
+  </article>
+
+  <article class="destaque destaque-grafico">
+    <header>
+      <h2>População × museus, por região</h2>
+      <span class="pilula-escura">Índice de gestão: {{ k.indice_gestao_medio | br(0) }}</span>
+    </header>
+    <p class="legenda-mini"><span class="chave chave-pop"></span>população <span class="chave chave-museu"></span>museus ativos</p>
+    <div class="plot plot-mini" id="g-regioes" data-fig="{{ regioes_fig | e }}" role="img"
+         aria-label="Participação de cada região na população e nos museus ativos do país"></div>
+    <details class="tabela tabela-compacta">
+      <summary>Tabela</summary>
+      <table>
+        <thead><tr><th scope="col">Região</th><th scope="col">% da população</th><th scope="col">% dos museus</th></tr></thead>
+        <tbody>{% for r in regioes_tabela %}<tr><td>{{ r.regiao_nome }}</td><td>{{ r.pct_populacao | pct }}</td><td>{{ r.pct_museus | pct }}</td></tr>{% endfor %}</tbody>
+      </table>
+    </details>
+  </article>
+</section>
+
+<section class="painel-bloco linha-do-tempo" aria-labelledby="t-tempo">
+  <header class="bloco-cabecalho">
+    <h2 id="t-tempo">Linha do tempo</h2>
+    <span class="bloco-meta">{{ linha_do_tempo.ultimos_dez_anos | br }} museus abertos nos últimos dez anos</span>
+    <a class="link-sublinhado" href="#t-decadas">Ver por década</a>
+  </header>
+  <div class="tempo">
+    <ol class="tempo-marcas" aria-hidden="true">
+      {% for m in linha_do_tempo.marcas %}<li style="left: {{ m.posicao }}%">{{ m.rotulo }}</li>{% endfor %}
+    </ol>
+    <ul class="tempo-eventos">
+      {% for e in linha_do_tempo.eventos %}
+      <li class="evento evento-linha-{{ e.linha }} evento-{{ e.ancora }}" style="--pos: {{ e.posicao }}%">
+        <span class="evento-texto">{{ e.texto }}</span>
+        <span class="evento-selo"><span class="ponto ponto-{{ e.ponto }}"></span>{{ e.selo }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+
+<section class="grade">
+  <figure class="cartao cartao-mapa">
+    <header class="cartao-topo"><div><h2>Museus ativos por 100 mil habitantes</h2><p class="nota">Clique numa UF para filtrar o painel inteiro.</p></div>{{ perguntar_sobre("Mapa de museus por 100 mil habitantes") }}</header>
+    <div class="plot" id="g-mapa" data-fig="{{ mapa | e }}" data-clicavel="uf" role="img"
+         aria-label="Mapa do Brasil por UF, colorido pela quantidade de museus ativos por 100 mil habitantes"></div>
+  </figure>
+  {% for gr in graficos %}{{ cartao(gr) }}{% endfor %}
+</section>
+{% endblock %}

@@ -1,0 +1,64 @@
+{# Componentes reutilizáveis. Cada gráfico tem o seu par em tabela (acessibilidade). #}
+
+{% macro cabecalho(rotulo, titulo, status, k=none, lead=none) %}
+<section class="cabecalho">
+  <div class="cabecalho-titulo">
+    <p class="rotulo">{{ rotulo }}</p>
+    <h1>{{ titulo }}</h1>
+  </div>
+  {% set st = status.get('status') %}
+  {% set nivel = 'atencao' if quarentena or st in ('sucesso_com_avisos', 'sucesso_com_quarentena') else ('bom' if st == 'sucesso' else 'critico') %}
+  <a class="aviso" href="/qualidade#t-coleta">
+    <span class="aviso-icone aviso-{{ nivel }}" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 3 4 6v6c0 4.4 3.4 8.5 8 9 4.6-.5 8-4.6 8-9V6z" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      {% if nivel == 'bom' %}<path d="m8.5 12 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      {% else %}<path d="M12 8v5M12 16h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>{% endif %}</svg>
+    </span>
+    <div>
+      {% if quarentena %}
+      <p class="aviso-titulo">Coleta de {{ quarentena.dt.strftime('%d/%m') }} em quarentena</p>
+      <p class="aviso-texto">Mostrando a de {{ quarentena.dt_em_uso.strftime('%d/%m') }}, a última coerente. {{ quarentena.motivo_quarentena | frase }}.</p>
+      {% else %}
+      <p class="aviso-titulo">{% if st == 'sucesso' %}Dados auditados{% elif st == 'sucesso_com_avisos' %}Auditados, com avisos{% else %}Última publicação bloqueada{% endif %}</p>
+      <p class="aviso-texto">{% if lead %}{{ lead }}{% else %}Todos os testes passaram antes da publicação.{% endif %}</p>
+      {% endif %}
+    </div>
+  </a>
+  <div class="cabecalho-acoes">
+    <a class="acao-texto" href="/agente" data-abrir-gaveta><span class="acao-mais" aria-hidden="true">+</span>Perguntar aos dados</a>
+    <a class="pilula-cinza" href="/qualidade">Qualidade</a>
+  </div>
+</section>
+{% endmacro %}
+
+{% macro perguntar_sobre(titulo) %}
+<button type="button" class="perguntar-sobre"
+        data-perguntar="Olhando o gráfico &quot;{{ titulo }}&quot; no recorte {{ filtro.rotulo }}: o que mais chama atenção nesses números e o que pode explicar isso? Use os dados publicados.">
+  <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM18.5 15l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor"/></svg>
+  Perguntar sobre isto
+</button>
+{% endmacro %}
+
+{% macro cartao(gr) %}
+<section class="cartao cartao-{{ gr.largura }}" aria-labelledby="t-{{ gr.id }}">
+  <header class="cartao-topo">
+    <div>
+      <h2 id="t-{{ gr.id }}">{{ gr.titulo }}</h2>
+      {% if gr.nota %}<p class="nota">{{ gr.nota }}</p>{% endif %}
+    </div>
+    {{ perguntar_sobre(gr.titulo) }}
+  </header>
+  <div class="plot" id="g-{{ gr.id }}" data-fig="{{ gr.fig | e }}" role="img" aria-label="{{ gr.titulo }}"></div>
+  {% if gr.tabela.linhas %}
+  <details class="tabela">
+    <summary>Ver os dados em tabela</summary>
+    <div class="rolagem">
+      <table>
+        <thead><tr>{% for c in gr.tabela.colunas %}<th scope="col">{{ c }}</th>{% endfor %}</tr></thead>
+        <tbody>{% for r in gr.tabela.linhas %}<tr>{% for v in r %}<td>{{ v }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+      </table>
+    </div>
+  </details>
+  {% endif %}
+</section>
+{% endmacro %}

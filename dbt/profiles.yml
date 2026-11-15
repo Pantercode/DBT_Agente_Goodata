@@ -1,0 +1,30 @@
+museus_br:
+  target: dev
+  outputs:
+    # Local: DuckDB em arquivo. É o target usado no dia a dia e no CI.
+    dev:
+      type: duckdb
+      path: "{{ env_var('MUSEUS_DUCKDB', '../data/warehouse/museus.duckdb') }}"
+      threads: 4
+      extensions: ["json"]
+
+    ci:
+      type: duckdb
+      path: "{{ env_var('MUSEUS_DUCKDB', '../data/warehouse/ci.duckdb') }}"
+      threads: 4
+      extensions: ["json"]
+
+    # Nuvem: BigQuery. Os modelos têm ramos por adapter (partition_by,
+    # cluster_by, insert_overwrite, CLONE no publish) via adapter.dispatch.
+    # Requer `pip install dbt-bigquery` e as tabelas do lake como external
+    # tables no dataset `raw` (ver docs/runbook.md).
+    bigquery:
+      type: bigquery
+      method: oauth
+      project: "{{ env_var('GCP_PROJECT', 'defina-GCP_PROJECT') }}"
+      dataset: museus
+      location: southamerica-east1
+      threads: 8
+      job_execution_timeout_seconds: 600
+      # Trava de custo: nenhuma query do projeto deve ler mais de 2 GB.
+      maximum_bytes_billed: 2000000000

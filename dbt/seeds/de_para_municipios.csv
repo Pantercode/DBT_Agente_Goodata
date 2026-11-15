@@ -1,0 +1,9 @@
+uf_sigla,nome_no_cadastro,municipio_id,motivo
+MA,São Luiz,2111300,Grafia antiga de São Luís
+RN,Arês,2401206,Grafia popular; o nome oficial no IBGE é Arez
+AC,São José do Sabugi,2514701,UF errada no cadastro: o município fica na PB
+BA,Brasília,5300108,UF errada no cadastro: Brasília fica no DF
+GO,Carazinho,4304705,UF errada no cadastro: o município fica no RS
+RR,Londrina,4113700,UF errada no cadastro: o município fica no PR
+BA,Barretos,3505500,UF errada no cadastro: o município fica em SP
+MT,Alegre,3200201,UF errada no cadastro: o município fica no ES

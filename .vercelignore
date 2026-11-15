@@ -1,0 +1,13 @@
+.venv
+.env
+dbt
+data/lake
+data/warehouse
+ingestao
+orquestracao
+gooddata
+docs
+tests
+scripts
+.github
+*.duckdb

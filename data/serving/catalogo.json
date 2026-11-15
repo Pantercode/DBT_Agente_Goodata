@@ -1,0 +1,1470 @@
+{
+ "gerado_em": "2026-11-15T09:57:12.990140Z",
+ "modelos": {
+  "agg_recursos_acessibilidade": {
+   "tabela": "publicado.agg_recursos_acessibilidade",
+   "descricao": "Frequência de cada recurso de acessibilidade por UF e dimensão (física/sensorial). O denominador é o total de museus ativos da UF.",
+   "camada": "marts",
+   "materializacao": "table",
+   "depende_de": [
+    "int_museus__atual"
+   ],
+   "colunas": {
+    "pct_museus_com_recurso": {
+     "tipo": "DOUBLE",
+     "descricao": ""
+    },
+    "uf_sigla": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "dimensao": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "recurso": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "qtd_museus_com_recurso": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "qtd_museus_ativos_uf": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    }
+   },
+   "testes": [
+    "no_intervalo",
+    "unico_por"
+   ]
+  },
+  "dim_municipio": {
+   "tabela": "publicado.dim_municipio",
+   "descricao": "Dimensão conformada de municípios (todos, com ou sem museu) com população do Censo.",
+   "camada": "marts",
+   "materializacao": "table",
+   "depende_de": [
+    "int_municipios__com_populacao"
+   ],
+   "colunas": {
+    "municipio_id": {
+     "tipo": "INTEGER",
+     "descricao": ""
+    },
+    "populacao": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "municipio_nome": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "uf_sigla": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "uf_nome": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "regiao_sigla": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "regiao_nome": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "mesorregiao": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "microrregiao": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "regiao_intermediaria": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "regiao_imediata": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "ano_populacao": {
+     "tipo": "INTEGER",
+     "descricao": ""
+    },
+    "faixa_populacional": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "municipio_rotulo": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    }
+   },
+   "testes": [
+    "cobertura_minima",
+    "not_null",
+    "relationships",
+    "unique"
+   ]
+  },
+  "dim_museu": {
+   "tabela": "publicado.dim_museu",
+   "descricao": "Dimensão de museus SCD tipo 2, com vigência derivada das partições do lake. Uma linha por versão. Para a foto atual filtre `is_versao_atual`.",
+   "camada": "marts",
+   "materializacao": "incremental",
+   "depende_de": [
+    "int_museus__enriquecido"
+   ],
+   "colunas": {
+    "museu_sk": {
+     "tipo": "VARCHAR",
+     "descricao": "Chave substituta da versão (hash de museu_id + valido_de)."
+    },
+    "museu_id": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "municipio_id": {
+     "tipo": "INTEGER",
+     "descricao": ""
+    },
+    "valido_de": {
+     "tipo": "DATE",
+     "descricao": ""
+    },
+    "indice_gestao": {
+     "tipo": "INTEGER",
+     "descricao": "Índice de gestão museológica, de 0 a 100. Soma ponderada de seis critérios do formulário de cadastro, com pesos no seed `pesos_indice_gestao`: | critério | peso | |---|---| | plano museológico | 30 | | regimento interno | 20 | | instrumento de documentação do acervo | 15 | | política de aquisição | 15 | | política de descarte | 10 | | equipe própria (≥ 1 pessoa) | 10 | Critério não respondido conta como não atendido. Faixas: **Estruturada** (≥ 70), **Em estruturação** (40-69), **Incipiente** (1-39), **Sem instrumentos** (0)."
+    },
+    "codigo_ibram": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "nome_museu": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "tipo_museu": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "tematica": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "status_funcionamento": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "is_aberto": {
+     "tipo": "BOOLEAN",
+     "descricao": ""
+    },
+    "esfera_administrativa": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "natureza_administrativa": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "nivel_governo": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "subtipo_privado": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "is_comunitario": {
+     "tipo": "BOOLEAN",
+     "descricao": ""
+    },
+    "ano_abertura": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "decada_abertura": {
+     "tipo": "INTEGER",
+     "descricao": ""
+    },
+    "municipio_nome": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "uf_sigla": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "regiao_sigla": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "possui_plano_museologico": {
+     "tipo": "BOOLEAN",
+     "descricao": ""
+    },
+    "possui_regimento_interno": {
+     "tipo": "BOOLEAN",
+     "descricao": ""
+    },
+    "possui_politica_aquisicao": {
+     "tipo": "BOOLEAN",
+     "descricao": ""
+    },
+    "possui_politica_descarte": {
+     "tipo": "BOOLEAN",
+     "descricao": ""
+    },
+    "faixa_gestao": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "url_cadastro": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "valido_ate": {
+     "tipo": "DATE",
+     "descricao": ""
+    },
+    "is_versao_atual": {
+     "tipo": "BOOLEAN",
+     "descricao": ""
+    },
+    "is_removido_do_cadastro": {
+     "tipo": "BOOLEAN",
+     "descricao": ""
+    },
+    "ultima_confirmacao": {
+     "tipo": "DATE",
+     "descricao": ""
+    },
+    "hash_atributos": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    }
+   },
+   "testes": [
+    "not_null",
+    "relationships",
+    "scd2_valida",
+    "unique",
+    "volume_estavel"
+   ]
+  },
+  "fct_museus_diario": {
+   "tabela": "publicado.fct_museus_diario",
+   "descricao": "Snapshot diário por museu. Incremental por partição (delete+insert no DuckDB, insert_overwrite no BigQuery), reprocessando as últimas `janela_reprocessamento_dias` partições a cada execução.",
+   "camada": "marts",
+   "materializacao": "incremental",
+   "depende_de": [
+    "int_museus__enriquecido",
+    "dim_museu"
+   ],
+   "colunas": {
+    "dt": {
+     "tipo": "DATE",
+     "descricao": "Data da partição de extração no lake (`dt=AAAA-MM-DD`). Não é a data de atualização na origem; para isso use `atualizado_na_origem_em`."
+    },
+    "data_sk": {
+     "tipo": "INTEGER",
+     "descricao": ""
+    },
+    "uf_sigla": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "esfera_sk": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "tipo_museu_sk": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "tematica_sk": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "museu_sk": {
+     "tipo": "VARCHAR",
+     "descricao": "Versão de dim_museu vigente na data do snapshot."
+    },
+    "museu_id": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "municipio_id": {
+     "tipo": "INTEGER",
+     "descricao": ""
+    },
+    "is_aberto": {
+     "tipo": "BOOLEAN",
+     "descricao": ""
+    },
+    "indice_gestao": {
+     "tipo": "INTEGER",
+     "descricao": ""
+    },
+    "dimensoes_acessibilidade": {
+     "tipo": "INTEGER",
+     "descricao": ""
+    },
+    "qtd_pessoas_trabalham": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "qtd_terceirizados": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "qtd_bens_culturais": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "valor_entrada": {
+     "tipo": "DECIMAL(10,2)",
+     "descricao": ""
+    },
+    "criterios_respondidos": {
+     "tipo": "INTEGER",
+     "descricao": ""
+    },
+    "qtd_museus": {
+     "tipo": "INTEGER",
+     "descricao": ""
+    }
+   },
+   "testes": [
+    "atualizado_ha_no_maximo",
+    "not_null",
+    "relationships",
+    "unico_por"
+   ]
+  },
+  "obt_museus": {
+   "tabela": "publicado.obt_museus",
+   "descricao": "One Big Table: estado atual de cada museu, com STRUCTs (localizacao, gestao, equipe, acessibilidade, visitacao) e ARRAYs (tipologias, recursos). Base do agente de IA e de consultas exploratórias.",
+   "camada": "marts",
+   "materializacao": "table",
+   "depende_de": [
+    "int_museus__atual"
+   ],
+   "colunas": {
+    "museu_id": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "codigo_ibram": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "nome_museu": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "tipo_museu": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "tematica": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "status_funcionamento": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "is_aberto": {
+     "tipo": "BOOLEAN",
+     "descricao": ""
+    },
+    "natureza_administrativa": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "esfera_administrativa": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "uf_sigla": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "regiao_sigla": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "municipio_id": {
+     "tipo": "INTEGER",
+     "descricao": ""
+    },
+    "municipio_nome": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "ano_abertura": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "localizacao": {
+     "tipo": "STRUCT(logradouro_bairro VARCHAR, cep VARCHAR, latitude DOUBLE, longitude DOUBLE, uf_cadastro VARCHAR, uf_divergente BOOLEAN, metodo_resolucao VARCHAR)",
+     "descricao": ""
+    },
+    "gestao": {
+     "tipo": "STRUCT(indice INTEGER, faixa VARCHAR, plano_museologico BOOLEAN, regimento_interno BOOLEAN, politica_aquisicao BOOLEAN, politica_descarte BOOLEAN, documentacao_acervo BOOLEAN, criterios_respondidos INTEGER)",
+     "descricao": ""
+    },
+    "equipe": {
+     "tipo": "STRUCT(pessoas_trabalham BIGINT, terceirizados BIGINT, voluntarios BOOLEAN, estagiarios BOOLEAN)",
+     "descricao": ""
+    },
+    "acessibilidade": {
+     "tipo": "STRUCT(dimensoes_atendidas INTEGER, recursos_fisicos VARCHAR[], recursos_sensoriais VARCHAR[], recursos_turista VARCHAR[])",
+     "descricao": ""
+    },
+    "visitacao": {
+     "tipo": "STRUCT(entrada_cobrada BOOLEAN, valor_entrada DECIMAL(10,2), visitas_mediadas VARCHAR, publicos_educativos VARCHAR[], possui_site BOOLEAN, possui_redes_sociais BOOLEAN)",
+     "descricao": ""
+    },
+    "qtd_bens_culturais": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "tipologias_acervo": {
+     "tipo": "VARCHAR[]",
+     "descricao": ""
+    },
+    "url_cadastro": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "atualizado_na_origem_em": {
+     "tipo": "DATE",
+     "descricao": ""
+    },
+    "dt_referencia": {
+     "tipo": "DATE",
+     "descricao": ""
+    }
+   },
+   "testes": [
+    "not_null",
+    "unique",
+    "volume_estavel"
+   ]
+  },
+  "bridge_museu_tipologia": {
+   "tabela": "publicado.bridge_museu_tipologia",
+   "descricao": "Ponte museu x tipologia (foto atual). Some `peso` para alocar cada museu uma vez só entre as tipologias; conte linhas para \"museus que têm acervo de X\".",
+   "camada": "marts",
+   "materializacao": "table",
+   "depende_de": [
+    "int_museus__atual",
+    "dim_tipologia_acervo"
+   ],
+   "colunas": {
+    "tipologia_sk": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "peso": {
+     "tipo": "DOUBLE",
+     "descricao": ""
+    },
+    "museu_id": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "tipologia": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    }
+   },
+   "testes": [
+    "no_intervalo",
+    "relationships",
+    "soma_igual_a_contagem",
+    "unico_por"
+   ]
+  },
+  "dim_data": {
+   "tabela": "publicado.dim_data",
+   "descricao": "Calendário diário com rótulos em português. Role-playing para dt do snapshot, vigência e cadastro.",
+   "camada": "marts",
+   "materializacao": "table",
+   "depende_de": [
+    "metricflow_time_spine"
+   ],
+   "colunas": {
+    "data": {
+     "tipo": "DATE",
+     "descricao": ""
+    },
+    "data_sk": {
+     "tipo": "INTEGER",
+     "descricao": "AAAAMMDD inteiro (chave do fato)."
+    },
+    "ano": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "trimestre": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "mes": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "nome_mes": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "ano_mes": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "dia": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "dia_semana": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "nome_dia_semana": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "is_fim_de_semana": {
+     "tipo": "BOOLEAN",
+     "descricao": ""
+    },
+    "semana_iso": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "decada": {
+     "tipo": "INTEGER",
+     "descricao": ""
+    }
+   },
+   "testes": [
+    "not_null",
+    "relationships",
+    "unique"
+   ]
+  },
+  "dim_esfera_administrativa": {
+   "tabela": "publicado.dim_esfera_administrativa",
+   "descricao": "Esfera administrativa do cadastro classificada em natureza, nível de governo e subtipo privado.",
+   "camada": "marts",
+   "materializacao": "table",
+   "depende_de": [
+    "classificacao_esfera"
+   ],
+   "colunas": {
+    "esfera_sk": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "esfera_administrativa": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "natureza_administrativa": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "nivel_governo": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "subtipo_privado": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "ordem": {
+     "tipo": "INTEGER",
+     "descricao": ""
+    }
+   },
+   "testes": [
+    "not_null",
+    "relationships",
+    "unique"
+   ]
+  },
+  "dim_tematica": {
+   "tabela": "publicado.dim_tematica",
+   "descricao": "Temática principal do museu.",
+   "camada": "marts",
+   "materializacao": "table",
+   "depende_de": [
+    "int_museus__enriquecido"
+   ],
+   "colunas": {
+    "tematica_sk": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "tematica": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "qtd_museus_historico": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    }
+   },
+   "testes": [
+    "not_null",
+    "relationships",
+    "unique"
+   ]
+  },
+  "dim_tipologia_acervo": {
+   "tabela": "publicado.dim_tipologia_acervo",
+   "descricao": "Tipologias de acervo. Ligada ao museu pela bridge_museu_tipologia (muitos para muitos).",
+   "camada": "marts",
+   "materializacao": "table",
+   "depende_de": [
+    "int_museus__enriquecido"
+   ],
+   "colunas": {
+    "tipologia_sk": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "tipologia": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    }
+   },
+   "testes": [
+    "not_null",
+    "relationships",
+    "unique"
+   ]
+  },
+  "dim_tipo_museu": {
+   "tabela": "publicado.dim_tipo_museu",
+   "descricao": "Tipo de museu (taxonomia do Ibram), com marcadores de museu virtual e de acervo vivo.",
+   "camada": "marts",
+   "materializacao": "table",
+   "depende_de": [
+    "int_museus__enriquecido"
+   ],
+   "colunas": {
+    "tipo_museu_sk": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "tipo_museu": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "is_virtual": {
+     "tipo": "BOOLEAN",
+     "descricao": ""
+    },
+    "is_acervo_vivo": {
+     "tipo": "BOOLEAN",
+     "descricao": ""
+    },
+    "qtd_museus_historico": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    }
+   },
+   "testes": [
+    "not_null",
+    "relationships",
+    "unique"
+   ]
+  },
+  "dim_uf": {
+   "tabela": "publicado.dim_uf",
+   "descricao": "As 27 UFs com região e população do Censo.",
+   "camada": "marts",
+   "materializacao": "table",
+   "depende_de": [
+    "int_municipios__com_populacao"
+   ],
+   "colunas": {
+    "uf_sigla": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "uf_id": {
+     "tipo": "INTEGER",
+     "descricao": ""
+    },
+    "uf_nome": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "regiao_sigla": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "regiao_nome": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "qtd_municipios": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "populacao": {
+     "tipo": "HUGEINT",
+     "descricao": ""
+    }
+   },
+   "testes": [
+    "not_null",
+    "relationships",
+    "unique"
+   ]
+  },
+  "agg_aberturas_por_decada": {
+   "tabela": "publicado.agg_aberturas_por_decada",
+   "descricao": "Museus hoje cadastrados, agrupados pela década de abertura, região e natureza.",
+   "camada": "marts",
+   "materializacao": "table",
+   "depende_de": [
+    "int_museus__atual"
+   ],
+   "colunas": {
+    "decada_abertura": {
+     "tipo": "INTEGER",
+     "descricao": ""
+    },
+    "regiao_sigla": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "natureza_administrativa": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "qtd_museus": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "qtd_museus_ainda_ativos": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    }
+   },
+   "testes": []
+  },
+  "agg_gestao_por_perfil": {
+   "tabela": "publicado.agg_gestao_por_perfil",
+   "descricao": "Percentual de museus ativos que atende cada critério de gestão, por natureza/perfil/tipo.",
+   "camada": "marts",
+   "materializacao": "table",
+   "depende_de": [
+    "int_museus__atual"
+   ],
+   "colunas": {
+    "indice_gestao_medio": {
+     "tipo": "DOUBLE",
+     "descricao": "Índice de gestão museológica, de 0 a 100. Soma ponderada de seis critérios do formulário de cadastro, com pesos no seed `pesos_indice_gestao`: | critério | peso | |---|---| | plano museológico | 30 | | regimento interno | 20 | | instrumento de documentação do acervo | 15 | | política de aquisição | 15 | | política de descarte | 10 | | equipe própria (≥ 1 pessoa) | 10 | Critério não respondido conta como não atendido. Faixas: **Estruturada** (≥ 70), **Em estruturação** (40-69), **Incipiente** (1-39), **Sem instrumentos** (0)."
+    },
+    "natureza_administrativa": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "perfil": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "tipo_museu": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "qtd_museus_ativos": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "pct_plano_museologico": {
+     "tipo": "DOUBLE",
+     "descricao": ""
+    },
+    "pct_regimento_interno": {
+     "tipo": "DOUBLE",
+     "descricao": ""
+    },
+    "pct_documentacao_acervo": {
+     "tipo": "DOUBLE",
+     "descricao": ""
+    },
+    "pct_politica_aquisicao": {
+     "tipo": "DOUBLE",
+     "descricao": ""
+    },
+    "pct_politica_descarte": {
+     "tipo": "DOUBLE",
+     "descricao": ""
+    },
+    "pct_equipe_propria": {
+     "tipo": "DOUBLE",
+     "descricao": ""
+    },
+    "media_criterios_respondidos": {
+     "tipo": "DOUBLE",
+     "descricao": ""
+    }
+   },
+   "testes": [
+    "no_intervalo"
+   ]
+  },
+  "gd_municipio": {
+   "tabela": "publicado.gd_municipio",
+   "descricao": "Dataset Município do GoodData. Achatado, booleanos como 0/1, população sem museu pré-calculada. Mapeado em gooddata/modelo_logico.py.",
+   "camada": "marts",
+   "materializacao": "table",
+   "depende_de": [
+    "agg_cobertura_municipio"
+   ],
+   "colunas": {
+    "municipio_id": {
+     "tipo": "INTEGER",
+     "descricao": ""
+    },
+    "municipio_rotulo": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "municipio_nome": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "uf_sigla": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "regiao_sigla": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "regiao_nome": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "faixa_populacional": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "classe_cobertura": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "populacao": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "qtd_museus_cadastrados": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "qtd_museus_ativos": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "tem_museu_ativo": {
+     "tipo": "INTEGER",
+     "descricao": ""
+    },
+    "populacao_sem_museu": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    }
+   },
+   "testes": [
+    "not_null",
+    "relationships",
+    "unique"
+   ]
+  },
+  "gd_museu": {
+   "tabela": "publicado.gd_museu",
+   "descricao": "Dataset Museu do GoodData (foto atual). Referencia gd_municipio.",
+   "camada": "marts",
+   "materializacao": "table",
+   "depende_de": [
+    "int_museus__atual"
+   ],
+   "colunas": {
+    "museu_id": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "nome_museu": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "tipo_museu": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "tematica": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "status_funcionamento": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "natureza_administrativa": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "perfil_administrativo": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "faixa_gestao": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "decada_abertura": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "municipio_id": {
+     "tipo": "INTEGER",
+     "descricao": ""
+    },
+    "is_aberto": {
+     "tipo": "INTEGER",
+     "descricao": ""
+    },
+    "indice_gestao": {
+     "tipo": "INTEGER",
+     "descricao": ""
+    },
+    "indice_gestao_se_ativo": {
+     "tipo": "INTEGER",
+     "descricao": ""
+    },
+    "possui_plano_museologico": {
+     "tipo": "INTEGER",
+     "descricao": ""
+    },
+    "respondeu_plano_museologico": {
+     "tipo": "INTEGER",
+     "descricao": ""
+    },
+    "dimensoes_acessibilidade": {
+     "tipo": "INTEGER",
+     "descricao": ""
+    },
+    "sem_acessibilidade": {
+     "tipo": "INTEGER",
+     "descricao": ""
+    },
+    "qtd_pessoas_trabalham": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "qtd_bens_culturais": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    }
+   },
+   "testes": [
+    "not_null",
+    "relationships",
+    "unique",
+    "volume_estavel"
+   ]
+  },
+  "fct_pontos_memoria": {
+   "tabela": "publicado.fct_pontos_memoria",
+   "descricao": "Pontos de Memória do cadastro do Ibram (foto atual).",
+   "camada": "marts",
+   "materializacao": "table",
+   "depende_de": [
+    "int_pontos_memoria__atual"
+   ],
+   "colunas": {
+    "ponto_memoria_id": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "nome_ponto": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "uf_sigla": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "regiao_sigla": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "latitude": {
+     "tipo": "DOUBLE",
+     "descricao": ""
+    },
+    "longitude": {
+     "tipo": "DOUBLE",
+     "descricao": ""
+    },
+    "criado_em": {
+     "tipo": "DATE",
+     "descricao": ""
+    },
+    "ano_criacao": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "possui_acervo": {
+     "tipo": "BOOLEAN",
+     "descricao": ""
+    },
+    "possui_acervo_digital": {
+     "tipo": "BOOLEAN",
+     "descricao": ""
+    },
+    "fez_inventario_participativo": {
+     "tipo": "BOOLEAN",
+     "descricao": ""
+    },
+    "possui_sede_propria": {
+     "tipo": "BOOLEAN",
+     "descricao": ""
+    },
+    "contemplado_edital_ibram": {
+     "tipo": "BOOLEAN",
+     "descricao": ""
+    },
+    "participa_de_rede": {
+     "tipo": "BOOLEAN",
+     "descricao": ""
+    },
+    "tem_parceria_poder_publico": {
+     "tipo": "BOOLEAN",
+     "descricao": ""
+    },
+    "qtd_tematicas": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "tematicas": {
+     "tipo": "VARCHAR[]",
+     "descricao": ""
+    },
+    "dt_referencia": {
+     "tipo": "DATE",
+     "descricao": ""
+    }
+   },
+   "testes": [
+    "not_null",
+    "unique"
+   ]
+  },
+  "mart_completude_cadastro": {
+   "tabela": "publicado.mart_completude_cadastro",
+   "descricao": "Percentual de preenchimento dos campos-chave do cadastro por UF (formato longo).",
+   "camada": "marts",
+   "materializacao": "table",
+   "depende_de": [
+    "int_museus__atual"
+   ],
+   "colunas": {
+    "uf_sigla": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "campo": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "qtd_museus": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "qtd_preenchidos": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "pct_preenchido": {
+     "tipo": "DOUBLE",
+     "descricao": ""
+    }
+   },
+   "testes": [
+    "unico_por"
+   ]
+  },
+  "mart_saude_coleta": {
+   "tabela": "publicado.mart_saude_coleta",
+   "descricao": "Saúde da coleta: cada partição de cada fonte, válida ou em quarentena, o motivo, e qual partição os números publicados estão usando.",
+   "camada": "marts",
+   "materializacao": "table",
+   "depende_de": [
+    "int_particoes__validacao",
+    "int_museus__registros_quarentena"
+   ],
+   "colunas": {
+    "fonte": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "dt": {
+     "tipo": "DATE",
+     "descricao": ""
+    },
+    "status": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "motivo_quarentena": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "registros_lidos": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "registros_manifesto": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "regua_volume": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "pct_sem_uf": {
+     "tipo": "DOUBLE",
+     "descricao": ""
+    },
+    "is_particao_em_uso": {
+     "tipo": "BOOLEAN",
+     "descricao": ""
+    },
+    "dt_em_uso": {
+     "tipo": "DATE",
+     "descricao": ""
+    },
+    "is_mais_nova_que_a_publicada": {
+     "tipo": "BOOLEAN",
+     "descricao": ""
+    },
+    "registros_fora_por_valor_invalido": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "validado_em": {
+     "tipo": "TIMESTAMP WITH TIME ZONE",
+     "descricao": ""
+    }
+   },
+   "testes": [
+    "unico_por"
+   ]
+  },
+  "agg_cobertura_brasil": {
+   "tabela": "publicado.agg_cobertura_brasil",
+   "descricao": "Números nacionais (uma linha), recalculados do grão município. Fonte dos indicadores de capa.",
+   "camada": "marts",
+   "materializacao": "table",
+   "depende_de": [
+    "int_museus__atual",
+    "agg_cobertura_municipio",
+    "int_pontos_memoria__atual"
+   ],
+   "colunas": {
+    "dt_referencia": {
+     "tipo": "DATE",
+     "descricao": ""
+    },
+    "qtd_museus_cadastrados": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "qtd_museus_ativos": {
+     "tipo": "BIGINT",
+     "descricao": "Museu com status de funcionamento **\"Aberto\"** no cadastro. É a definição usada em toda métrica de cobertura. Museu fechado, em implantação ou sem status conta em `qtd_museus_cadastrados`, nunca em `qtd_museus_ativos`."
+    },
+    "qtd_museus_fechados": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "qtd_pontos_memoria": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "populacao": {
+     "tipo": "HUGEINT",
+     "descricao": ""
+    },
+    "qtd_municipios": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "qtd_municipios_com_museu": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "pct_municipios_com_museu": {
+     "tipo": "DOUBLE",
+     "descricao": ""
+    },
+    "populacao_sem_museu": {
+     "tipo": "HUGEINT",
+     "descricao": ""
+    },
+    "pct_populacao_sem_museu": {
+     "tipo": "DOUBLE",
+     "descricao": ""
+    },
+    "museus_por_100k_hab": {
+     "tipo": "DOUBLE",
+     "descricao": "Museus ativos por 100 mil habitantes: `qtd_museus_ativos * 100000 / populacao`. População do Censo 2022. Em agregações acima do grão da tabela, **recalcule com numerador e denominador**; não tire média de razões."
+    },
+    "indice_gestao_medio": {
+     "tipo": "DOUBLE",
+     "descricao": ""
+    },
+    "pct_plano_museologico": {
+     "tipo": "DOUBLE",
+     "descricao": ""
+    },
+    "pct_sem_acessibilidade": {
+     "tipo": "DOUBLE",
+     "descricao": ""
+    }
+   },
+   "testes": [
+    "no_intervalo",
+    "volume_estavel"
+   ]
+  },
+  "agg_cobertura_municipio": {
+   "tabela": "publicado.agg_cobertura_municipio",
+   "descricao": "Um registro por município (todos os 5.571), com museus ativos, densidade e classe de cobertura.",
+   "camada": "marts",
+   "materializacao": "table",
+   "depende_de": [
+    "int_museus__atual",
+    "dim_municipio"
+   ],
+   "colunas": {
+    "municipio_id": {
+     "tipo": "INTEGER",
+     "descricao": ""
+    },
+    "qtd_museus_ativos": {
+     "tipo": "BIGINT",
+     "descricao": "Museu com status de funcionamento **\"Aberto\"** no cadastro. É a definição usada em toda métrica de cobertura. Museu fechado, em implantação ou sem status conta em `qtd_museus_cadastrados`, nunca em `qtd_museus_ativos`."
+    },
+    "classe_cobertura": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "municipio_nome": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "municipio_rotulo": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "uf_sigla": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "regiao_sigla": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "regiao_nome": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "faixa_populacional": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "populacao": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "qtd_museus_cadastrados": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "qtd_museus_ativos_publicos": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "indice_gestao_medio": {
+     "tipo": "DOUBLE",
+     "descricao": ""
+    },
+    "tem_museu_ativo": {
+     "tipo": "BOOLEAN",
+     "descricao": ""
+    },
+    "museus_por_100k_hab": {
+     "tipo": "DOUBLE",
+     "descricao": ""
+    }
+   },
+   "testes": [
+    "accepted_values",
+    "not_null",
+    "unique",
+    "volume_estavel"
+   ]
+  },
+  "agg_cobertura_uf": {
+   "tabela": "publicado.agg_cobertura_uf",
+   "descricao": "Síntese por UF (27 linhas). Razões já calculadas; não some razões entre UFs.",
+   "camada": "marts",
+   "materializacao": "table",
+   "depende_de": [
+    "agg_cobertura_municipio",
+    "int_museus__atual",
+    "int_pontos_memoria__atual"
+   ],
+   "colunas": {
+    "uf_sigla": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "museus_por_100k_hab": {
+     "tipo": "DOUBLE",
+     "descricao": "Museus ativos por 100 mil habitantes: `qtd_museus_ativos * 100000 / populacao`. População do Censo 2022. Em agregações acima do grão da tabela, **recalcule com numerador e denominador**; não tire média de razões."
+    },
+    "pct_municipios_com_museu": {
+     "tipo": "DOUBLE",
+     "descricao": ""
+    },
+    "regiao_sigla": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "regiao_nome": {
+     "tipo": "VARCHAR",
+     "descricao": ""
+    },
+    "populacao": {
+     "tipo": "HUGEINT",
+     "descricao": ""
+    },
+    "qtd_municipios": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "qtd_municipios_com_museu": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "qtd_museus_cadastrados": {
+     "tipo": "HUGEINT",
+     "descricao": ""
+    },
+    "qtd_museus_ativos": {
+     "tipo": "HUGEINT",
+     "descricao": ""
+    },
+    "qtd_pontos_memoria": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    },
+    "populacao_sem_museu": {
+     "tipo": "HUGEINT",
+     "descricao": ""
+    },
+    "pct_populacao_sem_museu": {
+     "tipo": "DOUBLE",
+     "descricao": ""
+    },
+    "indice_gestao_medio": {
+     "tipo": "DOUBLE",
+     "descricao": ""
+    },
+    "pct_plano_museologico": {
+     "tipo": "DOUBLE",
+     "descricao": ""
+    },
+    "pct_com_acessibilidade_fisica": {
+     "tipo": "DOUBLE",
+     "descricao": ""
+    },
+    "pct_com_acessibilidade_sensorial": {
+     "tipo": "DOUBLE",
+     "descricao": ""
+    },
+    "pct_museus_publicos": {
+     "tipo": "DOUBLE",
+     "descricao": ""
+    },
+    "ranking_museus_per_capita": {
+     "tipo": "BIGINT",
+     "descricao": ""
+    }
+   },
+   "testes": [
+    "no_intervalo",
+    "not_null",
+    "unique",
+    "volume_estavel"
+   ]
+  }
+ },
+ "metricas": {
+  "museus_ativos": {
+   "rotulo": "Museus ativos",
+   "descricao": "Museus com status \"Aberto\".",
+   "tipo": "simple"
+  },
+  "museus_cadastrados": {
+   "rotulo": "Museus cadastrados",
+   "descricao": "",
+   "tipo": "simple"
+  },
+  "soma_indice_gestao_ativos": {
+   "rotulo": "Soma do índice de gestão (museus ativos)",
+   "descricao": "",
+   "tipo": "simple"
+  },
+  "museus_sem_acessibilidade": {
+   "rotulo": "Museus ativos sem acessibilidade",
+   "descricao": "",
+   "tipo": "simple"
+  },
+  "indice_gestao_medio": {
+   "rotulo": "Índice de gestão médio (museus ativos)",
+   "descricao": "Média do índice de gestão (0-100) entre museus ativos.",
+   "tipo": "ratio"
+  },
+  "pct_museus_sem_acessibilidade": {
+   "rotulo": "% de museus ativos sem nenhum recurso de acessibilidade",
+   "descricao": "",
+   "tipo": "ratio"
+  }
+ },
+ "definicoes": {
+  "museu_ativo": "Museu com status de funcionamento **\"Aberto\"** no cadastro. É a definição usada em\ntoda métrica de cobertura. Museu fechado, em implantação ou sem status conta em\n`qtd_museus_cadastrados`, nunca em `qtd_museus_ativos`.",
+  "indice_gestao": "Índice de gestão museológica, de 0 a 100. Soma ponderada de seis critérios do\nformulário de cadastro, com pesos no seed `pesos_indice_gestao`:\n\n| critério | peso |\n|---|---|\n| plano museológico | 30 |\n| regimento interno | 20 |\n| instrumento de documentação do acervo | 15 |\n| política de aquisição | 15 |\n| política de descarte | 10 |\n| equipe própria (≥ 1 pessoa) | 10 |\n\nCritério não respondido conta como não atendido. Faixas: **Estruturada** (≥ 70),\n**Em estruturação** (40-69), **Incipiente** (1-39), **Sem instrumentos** (0).",
+  "museus_por_100k": "Museus ativos por 100 mil habitantes: `qtd_museus_ativos * 100000 / populacao`.\nPopulação do Censo 2022. Em agregações acima do grão da tabela, **recalcule com\nnumerador e denominador**; não tire média de razões.",
+  "dt": "Data da partição de extração no lake (`dt=AAAA-MM-DD`). Não é a data de\natualização na origem; para isso use `atualizado_na_origem_em`."
+ }
+}

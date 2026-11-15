@@ -1,0 +1,70 @@
+# Métricas MAQL do workspace GoodData.
+#
+# Mesmos nomes e definições de dbt/models/semantic/semantic_models.yml e de
+# docs/metricas.md. tests/test_metricas_consistentes.py falha se um nome
+# existir aqui e não lá (ou vice-versa, para as métricas marcadas `core`).
+#
+# Regra: MAQL só soma, conta e divide colunas que o dbt já entregou prontas.
+# Nenhuma regra de negócio mora aqui.
+
+metricas:
+  - id: museus_ativos
+    titulo: Museus ativos
+    core: true
+    formato: "#,##0"
+    maql: SELECT SUM({fact/museu.is_aberto})
+
+  - id: museus_cadastrados
+    titulo: Museus cadastrados
+    core: true
+    formato: "#,##0"
+    maql: SELECT COUNT({attribute/museu.museu_id})
+
+  - id: populacao
+    titulo: População (Censo 2022)
+    formato: "#,##0"
+    maql: SELECT SUM({fact/municipio.populacao})
+
+  - id: museus_por_100k_hab
+    titulo: Museus ativos por 100 mil habitantes
+    core: true
+    formato: "#,##0.00"
+    maql: SELECT {metric/museus_ativos} * 100000 / {metric/populacao}
+
+  - id: pct_municipios_com_museu
+    titulo: "% de municípios com museu ativo"
+    core: true
+    formato: "#,##0.0%"
+    maql: SELECT SUM({fact/municipio.tem_museu_ativo}) / COUNT({attribute/municipio.municipio_id})
+
+  - id: populacao_sem_museu
+    titulo: População em municípios sem museu
+    formato: "#,##0"
+    maql: SELECT SUM({fact/municipio.populacao_sem_museu})
+
+  - id: pct_populacao_sem_museu
+    titulo: "% da população em município sem museu"
+    core: true
+    formato: "#,##0.0%"
+    maql: SELECT {metric/populacao_sem_museu} / {metric/populacao}
+
+  - id: indice_gestao_medio
+    titulo: Índice de gestão médio (museus ativos)
+    core: true
+    formato: "#,##0.0"
+    maql: SELECT SUM({fact/museu.indice_gestao_se_ativo}) / {metric/museus_ativos}
+
+  - id: pct_plano_museologico
+    titulo: "% com plano museológico (entre quem respondeu)"
+    formato: "#,##0.0%"
+    maql: >-
+      SELECT SUM({fact/museu.possui_plano_museologico}) / SUM({fact/museu.respondeu_plano_museologico})
+      WHERE {label/museu.status_funcionamento} = "Aberto"
+
+  - id: pct_museus_sem_acessibilidade
+    titulo: "% de museus ativos sem nenhum recurso de acessibilidade"
+    core: true
+    formato: "#,##0.0%"
+    maql: >-
+      SELECT SUM({fact/museu.sem_acessibilidade}) / {metric/museus_ativos}
+      WHERE {label/museu.status_funcionamento} = "Aberto"

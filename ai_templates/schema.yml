@@ -1,0 +1,34 @@
+# EXEMPLO CANÔNICO: YAML DE MODELO
+# Baseado em models/marts/core/_core__models.yml
+#
+# Mínimo: descrição do modelo, PK testada, FKs testadas, volume_estavel em mart
+# publicado. Teste que deve barrar a publicação leva tags: ["bloqueante"].
+
+version: 2
+
+models:
+  - name: fct_museus_diario
+    description: >
+      Snapshot diário por museu. Incremental por partição, reprocessando as
+      últimas `janela_reprocessamento_dias` partições.
+    config:
+      meta:
+        dono: analytics-engineering
+        sla: "D+1, até 08:00"
+    data_tests:
+      - unico_por:
+          arguments:
+            colunas: [museu_id, dt]
+          config: { tags: ["bloqueante"] }
+      - volume_estavel:
+          config: { tags: ["bloqueante"] }
+    columns:
+      - name: dt
+        description: "{{ doc('dt') }}"
+        data_tests: [not_null]
+      - name: municipio_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_municipio')
+                field: municipio_id

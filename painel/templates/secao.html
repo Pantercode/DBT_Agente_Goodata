@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% from "_componentes.html" import cartao, cabecalho with context %}
+{% block titulo %}{{ titulo }} · Museus do Brasil{% endblock %}
+{% block conteudo %}
+{{ cabecalho('Recorte: ' ~ filtro.rotulo ~ ' · ' ~ (k.qtd_museus_ativos | br) ~ ' museus ativos', titulo, status, k, lead) }}
+<div class="grade">
+  {% for gr in graficos %}{{ cartao(gr) }}{% endfor %}
+</div>
+{% endblock %}

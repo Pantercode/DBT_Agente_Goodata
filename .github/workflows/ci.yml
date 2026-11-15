@@ -1,0 +1,68 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv pip install --system -r requirements-dev.txt
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: pytest
+      - name: GoodData (LDM + MAQL, offline)
+        run: python -m gooddata.provisionar --validar
+
+  dbt:
+    # Roda o projeto inteiro contra uma amostra versionada do lake
+    # (tests/fixtures/lake, gerada por scripts/gerar_fixture_ci.py). Sem rede,
+    # sem credencial. Três partições: história para o SCD2 e uma coleta quebrada para a quarentena.
+    runs-on: ubuntu-latest
+    env:
+      MUSEUS_DUCKDB: ${{ github.workspace }}/ci.duckdb
+      VARS_CI: '{caminho_lake: ../tests/fixtures/lake, minimo_museus_ativos: 10, minimo_museus_particao: 10, minimo_pontos_particao: 5}'
+    defaults:
+      run:
+        working-directory: dbt
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv pip install --system dbt-core==1.12.7 dbt-duckdb==1.11.1
+      - run: dbt parse --profiles-dir . --target ci
+      - name: bootstrap (o unit test do caminho incremental precisa de dim_museu existindo)
+        run: |
+          dbt seed --profiles-dir . --target ci --vars "$VARS_CI"
+          dbt run --profiles-dir . --target ci --select +dim_museu --vars "$VARS_CI"
+      - name: build (seed + run + test + unit tests)
+        run: >
+          dbt build --profiles-dir . --target ci
+          --vars "$VARS_CI"
+      - name: incremental é idempotente (segundo build não muda contagem)
+        run: |
+          antes=$(python -c "import duckdb;print(duckdb.connect('$MUSEUS_DUCKDB').sql('select count(*) from auditoria.fct_museus_diario').fetchone()[0])")
+          dbt run --profiles-dir . --target ci --select fct_museus_diario --vars "$VARS_CI"
+          depois=$(python -c "import duckdb;print(duckdb.connect('$MUSEUS_DUCKDB').sql('select count(*) from auditoria.fct_museus_diario').fetchone()[0])")
+          test "$antes" = "$depois" || { echo "incremental duplicou linhas: $antes -> $depois"; exit 1; }
+      - name: coleta quebrada vai para quarentena e os marts ficam no dia anterior
+        run: |
+          python - <<'PY'
+          import duckdb, os
+          c = duckdb.connect(os.environ["MUSEUS_DUCKDB"], read_only=True)
+          st = dict(c.sql("select cast(dt as varchar), status from intermediate.int_particoes__validacao where fonte = 'museus'").fetchall())
+          ref = c.sql("select cast(dt_referencia as varchar) from auditoria.agg_cobertura_brasil").fetchone()[0]
+          print(st, ref)
+          assert st["2026-11-15"] == "quarentena", st
+          assert st["2026-11-14"] == "valida", st
+          assert ref == "2026-11-14", ref
+          PY
+      - name: publish (WAP)
+        run: dbt run-operation publicar_marts --profiles-dir . --target ci

@@ -1,0 +1,53 @@
+version: 2
+
+sources:
+  - name: tainacan
+    description: >
+      Landing zone das coleções do MuseusBr (Cadastro Nacional de Museus, Ibram),
+      extraídas da API Tainacan em https://cadastro.museus.gov.br/wp-json/tainacan/v2.
+      Uma partição `dt=` por dia de extração; cada linha é um item com o bloco
+      `metadados` em JSON (chave = slug do metadado no Tainacan).
+      As tabelas do schema `raw` são criadas pela macro criar_tabelas_externas.
+    schema: raw
+    meta:
+      dono: analytics-engineering
+      origem: https://cadastro.museus.gov.br
+    loaded_at_field: _extraido_em
+    freshness:
+      # Carga diária. Um dia de atraso é aviso; dois bloqueiam o publish.
+      warn_after: { count: 26, period: hour }
+      error_after: { count: 50, period: hour }
+
+    tables:
+      - name: museus
+        description: Coleção 208 (Museus). Um item por museu cadastrado, por partição.
+        columns:
+          - name: item_id
+            description: ID do item no Tainacan. Estável; é a chave natural do museu.
+            data_tests: [not_null]
+          - name: metadados
+            description: JSON com ~70 metadados do formulário de cadastro.
+          - name: dt
+            description: Data da partição de extração.
+
+      - name: pontos_memoria
+        description: >
+          Coleção 179824 (Pontos de Memória). Iniciativas comunitárias de memória
+          reconhecidas pelo Ibram. Não são museus, mas cumprem papel parecido em
+          territórios sem museu, por isso entram na análise de cobertura.
+        columns:
+          - name: item_id
+            data_tests: [not_null]
+
+      - name: manifestos
+        description: >
+          Um registro por partição gravada no lake (todas as fontes), lido dos
+          `_manifest.json`. Base da validação de partição.
+        freshness: null
+        loaded_at_field: extraido_em
+
+      - name: museus_metadados
+        description: Dicionário dos metadados da coleção de museus (nome, tipo, se é multivalorado).
+        freshness: null
+      - name: pontos_memoria_metadados
+        freshness: null

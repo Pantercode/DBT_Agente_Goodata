@@ -1,0 +1,348 @@
+{
+  "ldm": {
+    "datasets": [
+      {
+        "grain": [
+          {
+            "id": "municipio.municipio_id",
+            "type": "attribute"
+          }
+        ],
+        "id": "municipio",
+        "references": [],
+        "title": "Município",
+        "attributes": [
+          {
+            "id": "municipio.municipio_id",
+            "labels": [],
+            "title": "Código IBGE do município",
+            "sourceColumn": "municipio_id",
+            "sourceColumnDataType": "INT",
+            "tags": [
+              "Município"
+            ]
+          },
+          {
+            "id": "municipio.municipio_rotulo",
+            "labels": [],
+            "title": "Município",
+            "sourceColumn": "municipio_rotulo",
+            "sourceColumnDataType": "STRING",
+            "tags": [
+              "Município"
+            ]
+          },
+          {
+            "id": "municipio.uf_sigla",
+            "labels": [],
+            "title": "UF",
+            "sourceColumn": "uf_sigla",
+            "sourceColumnDataType": "STRING",
+            "tags": [
+              "Município"
+            ]
+          },
+          {
+            "id": "municipio.regiao_nome",
+            "labels": [],
+            "title": "Região",
+            "sourceColumn": "regiao_nome",
+            "sourceColumnDataType": "STRING",
+            "tags": [
+              "Município"
+            ]
+          },
+          {
+            "id": "municipio.faixa_populacional",
+            "labels": [],
+            "title": "Porte do município",
+            "sourceColumn": "faixa_populacional",
+            "sourceColumnDataType": "STRING",
+            "tags": [
+              "Município"
+            ]
+          },
+          {
+            "id": "municipio.classe_cobertura",
+            "labels": [],
+            "title": "Cobertura museal",
+            "sourceColumn": "classe_cobertura",
+            "sourceColumnDataType": "STRING",
+            "tags": [
+              "Município"
+            ]
+          }
+        ],
+        "facts": [
+          {
+            "id": "municipio.populacao",
+            "title": "População",
+            "sourceColumn": "populacao",
+            "sourceColumnDataType": "INT",
+            "tags": [
+              "Município"
+            ]
+          },
+          {
+            "id": "municipio.qtd_museus_ativos",
+            "title": "Museus ativos no município",
+            "sourceColumn": "qtd_museus_ativos",
+            "sourceColumnDataType": "INT",
+            "tags": [
+              "Município"
+            ]
+          },
+          {
+            "id": "municipio.tem_museu_ativo",
+            "title": "Tem museu ativo (0/1)",
+            "sourceColumn": "tem_museu_ativo",
+            "sourceColumnDataType": "INT",
+            "tags": [
+              "Município"
+            ]
+          },
+          {
+            "id": "municipio.populacao_sem_museu",
+            "title": "População sem museu",
+            "sourceColumn": "populacao_sem_museu",
+            "sourceColumnDataType": "INT",
+            "tags": [
+              "Município"
+            ]
+          }
+        ],
+        "aggregatedFacts": [],
+        "dataSourceTableId": {
+          "dataSourceId": "museus_br",
+          "id": "gd_municipio",
+          "type": "dataSource",
+          "path": [
+            "museus_gd",
+            "gd_municipio"
+          ]
+        },
+        "tags": [
+          "Município"
+        ]
+      },
+      {
+        "grain": [
+          {
+            "id": "museu.museu_id",
+            "type": "attribute"
+          }
+        ],
+        "id": "museu",
+        "references": [
+          {
+            "identifier": {
+              "id": "municipio",
+              "type": "dataset"
+            },
+            "multivalue": false,
+            "sources": [
+              {
+                "target": {
+                  "id": "municipio.municipio_id",
+                  "type": "attribute"
+                },
+                "column": "municipio_id",
+                "dataType": "INT"
+              }
+            ]
+          }
+        ],
+        "title": "Museu",
+        "attributes": [
+          {
+            "id": "museu.museu_id",
+            "labels": [],
+            "title": "ID do museu",
+            "sourceColumn": "museu_id",
+            "sourceColumnDataType": "INT",
+            "tags": [
+              "Museu"
+            ]
+          },
+          {
+            "id": "museu.nome_museu",
+            "labels": [],
+            "title": "Museu",
+            "sourceColumn": "nome_museu",
+            "sourceColumnDataType": "STRING",
+            "tags": [
+              "Museu"
+            ]
+          },
+          {
+            "id": "museu.tipo_museu",
+            "labels": [],
+            "title": "Tipo de museu",
+            "sourceColumn": "tipo_museu",
+            "sourceColumnDataType": "STRING",
+            "tags": [
+              "Museu"
+            ]
+          },
+          {
+            "id": "museu.tematica",
+            "labels": [],
+            "title": "Temática",
+            "sourceColumn": "tematica",
+            "sourceColumnDataType": "STRING",
+            "tags": [
+              "Museu"
+            ]
+          },
+          {
+            "id": "museu.status_funcionamento",
+            "labels": [],
+            "title": "Status de funcionamento",
+            "sourceColumn": "status_funcionamento",
+            "sourceColumnDataType": "STRING",
+            "tags": [
+              "Museu"
+            ]
+          },
+          {
+            "id": "museu.natureza_administrativa",
+            "labels": [],
+            "title": "Natureza administrativa",
+            "sourceColumn": "natureza_administrativa",
+            "sourceColumnDataType": "STRING",
+            "tags": [
+              "Museu"
+            ]
+          },
+          {
+            "id": "museu.perfil_administrativo",
+            "labels": [],
+            "title": "Perfil administrativo",
+            "sourceColumn": "perfil_administrativo",
+            "sourceColumnDataType": "STRING",
+            "tags": [
+              "Museu"
+            ]
+          },
+          {
+            "id": "museu.faixa_gestao",
+            "labels": [],
+            "title": "Faixa de gestão",
+            "sourceColumn": "faixa_gestao",
+            "sourceColumnDataType": "STRING",
+            "tags": [
+              "Museu"
+            ]
+          },
+          {
+            "id": "museu.decada_abertura",
+            "labels": [],
+            "title": "Década de abertura",
+            "sourceColumn": "decada_abertura",
+            "sourceColumnDataType": "STRING",
+            "tags": [
+              "Museu"
+            ]
+          }
+        ],
+        "facts": [
+          {
+            "id": "museu.is_aberto",
+            "title": "Ativo (0/1)",
+            "sourceColumn": "is_aberto",
+            "sourceColumnDataType": "INT",
+            "tags": [
+              "Museu"
+            ]
+          },
+          {
+            "id": "museu.indice_gestao",
+            "title": "Índice de gestão",
+            "sourceColumn": "indice_gestao",
+            "sourceColumnDataType": "INT",
+            "tags": [
+              "Museu"
+            ]
+          },
+          {
+            "id": "museu.indice_gestao_se_ativo",
+            "title": "Índice de gestão (só ativos)",
+            "sourceColumn": "indice_gestao_se_ativo",
+            "sourceColumnDataType": "INT",
+            "tags": [
+              "Museu"
+            ]
+          },
+          {
+            "id": "museu.possui_plano_museologico",
+            "title": "Tem plano museológico (0/1)",
+            "sourceColumn": "possui_plano_museologico",
+            "sourceColumnDataType": "INT",
+            "tags": [
+              "Museu"
+            ]
+          },
+          {
+            "id": "museu.respondeu_plano_museologico",
+            "title": "Respondeu sobre plano (0/1)",
+            "sourceColumn": "respondeu_plano_museologico",
+            "sourceColumnDataType": "INT",
+            "tags": [
+              "Museu"
+            ]
+          },
+          {
+            "id": "museu.dimensoes_acessibilidade",
+            "title": "Dimensões de acessibilidade",
+            "sourceColumn": "dimensoes_acessibilidade",
+            "sourceColumnDataType": "INT",
+            "tags": [
+              "Museu"
+            ]
+          },
+          {
+            "id": "museu.sem_acessibilidade",
+            "title": "Sem acessibilidade (0/1)",
+            "sourceColumn": "sem_acessibilidade",
+            "sourceColumnDataType": "INT",
+            "tags": [
+              "Museu"
+            ]
+          },
+          {
+            "id": "museu.qtd_pessoas_trabalham",
+            "title": "Pessoas trabalhando",
+            "sourceColumn": "qtd_pessoas_trabalham",
+            "sourceColumnDataType": "INT",
+            "tags": [
+              "Museu"
+            ]
+          },
+          {
+            "id": "museu.qtd_bens_culturais",
+            "title": "Bens culturais",
+            "sourceColumn": "qtd_bens_culturais",
+            "sourceColumnDataType": "INT",
+            "tags": [
+              "Museu"
+            ]
+          }
+        ],
+        "aggregatedFacts": [],
+        "dataSourceTableId": {
+          "dataSourceId": "museus_br",
+          "id": "gd_museu",
+          "type": "dataSource",
+          "path": [
+            "museus_gd",
+            "gd_museu"
+          ]
+        },
+        "tags": [
+          "Museu"
+        ]
+      }
+    ],
+    "dateInstances": []
+  }
+}
