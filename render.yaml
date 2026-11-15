@@ -1,0 +1,24 @@
+# Deploy no Render (Blueprint): https://render.com/docs/blueprint-spec
+#
+# Sobe só o painel + agente. Os dados vêm de data/serving (Parquet versionado
+# no git), então o Render não precisa de dbt, lake nem warehouse.
+# Atualizar os números = rodar o pipeline local, commitar data/serving e dar push.
+
+services:
+  - type: web
+    name: museus-do-brasil
+    runtime: python
+    plan: free
+    region: oregon
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn painel.app:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips "*"
+    healthCheckPath: /api/saude
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: GEMINI_API_KEY
+        sync: false        # preencha no painel do Render (não vai para o git)
+      - key: GEMINI_MODEL
+        value: gemini-3.8-flash

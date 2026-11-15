@@ -46,7 +46,7 @@ Dados reais do Cadastro Nacional de Museus (Ibram) cruzados com o Censo 2022.
 
 ### Índice
 
-[Tour visual](#tour-visual) · [Como funciona](#como-funciona) · [Modelagem](#modelagem) · [Qualidade e quarentena](#qualidade-e-quarentena) · [Agente](#agente-de-ia) · [GoodData](#gooddata) · [Rodar](#rodar-em-3-passos) · [Deploy](#deploy-na-vercel) · [Estrutura](#estrutura) · [Decisões](#decisões)
+[Tour visual](#tour-visual) · [Como funciona](#como-funciona) · [Modelagem](#modelagem) · [Qualidade e quarentena](#qualidade-e-quarentena) · [Agente](#agente-de-ia) · [GoodData](#gooddata) · [Rodar](#rodar-em-3-passos) · [Publicar](#publicar-render) · [Estrutura](#estrutura) · [Decisões](#decisões)
 
 ---
 
@@ -278,15 +278,15 @@ O que fazer quando o pipeline para: [docs/runbook.md](docs/runbook.md)
 
 ---
 
-## Deploy na Vercel
+## Publicar (Render)
 
-```bash
-vercel link                                # escolha o projeto existente
-vercel env add GEMINI_API_KEY production
-vercel --prod
-```
+O painel e o agente sobem no **Render** a partir deste repositório, pelo [`render.yaml`](render.yaml):
+**New → Blueprint**, escolher o repositório e preencher `GEMINI_API_KEY`. Os dados vão junto, em
+`data/serving` (1,3 MB de Parquet), e cada `git push` publica de novo.
 
-O painel e o agente sobem como uma função Python (`api/index.py`). Os dados vão junto, em `data/serving` (1,3 MB de Parquet). Sem `GEMINI_API_KEY`, o painel funciona e o assistente aparece desligado.
+Passo a passo e o card pronto para o portfólio: [docs/deploy-render.md](docs/deploy-render.md).
+A Vercel também funciona (`vercel.json` + `api/index.py`), mas o Render não tem limite de tamanho de
+função e mantém o streaming do agente sem ajuste.
 
 ---
 

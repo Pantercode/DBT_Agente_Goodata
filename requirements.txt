@@ -8,3 +8,5 @@ google-genai==3.3.0
 sqlglot==30.31.0
 python-dotenv==1.2.4
 pyyaml==6.0.3
+# servidor (Render). A Vercel ignora: usa o próprio runtime.
+uvicorn==0.54.0
